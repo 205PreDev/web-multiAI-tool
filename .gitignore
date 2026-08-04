@@ -1,0 +1,23 @@
+# 추적 제외 — 개인 판단 기록, 로컬 메모
+.local/
+
+# 환경변수 / 시크릿
+.env
+.env.*
+!.env.example
+
+# 의존성 / 빌드 산출물
+node_modules/
+dist/
+build/
+.vite/
+
+# 에디터 / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 로그
+*.log
+npm-debug.log*
