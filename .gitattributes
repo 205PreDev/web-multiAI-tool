@@ -1,0 +1,71 @@
+# 줄바꿈과 파일 유형 규칙
+#
+# 각자의 core.autocrlf 설정에 의존하지 않도록 저장소에 고정한다.
+# 설정이 클론과 함께 따라가므로 다른 PC나 CI에서도 같은 결과가 나온다.
+
+# ── 기본 ────────────────────────────────────────────
+# 텍스트로 판별된 파일은 저장소에 LF로 보관한다.
+# 작업 폴더에서는 각자의 OS 관례를 따른다.
+* text=auto eol=lf
+
+# ── 반드시 LF ───────────────────────────────────────
+# CRLF가 붙으면 리눅스에서 bad interpreter 오류로 실행 자체가 실패한다.
+*.sh        text eol=lf
+mvnw        text eol=lf
+gradlew     text eol=lf
+
+# ── 반드시 CRLF ─────────────────────────────────────
+# 윈도우 셸이 직접 해석하는 파일.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# ── 3D 에셋 ─────────────────────────────────────────
+# .gltf는 JSON이라 텍스트로 두고, 실제 데이터가 담기는 .bin은 바이너리로 막는다.
+*.gltf      text eol=lf
+*.glb       binary
+*.bin       binary
+*.fbx       binary
+*.drc       binary
+*.ktx2      binary
+*.basis     binary
+
+# ── 오디오 ──────────────────────────────────────────
+# 효과음 픽스처가 변환으로 깨지는 것을 막는다.
+*.mp3       binary
+*.wav       binary
+*.ogg       binary
+*.flac      binary
+*.m4a       binary
+
+# ── 이미지 / 텍스처 ─────────────────────────────────
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.webp      binary
+*.avif      binary
+*.tga       binary
+*.exr       binary
+*.hdr       binary
+
+# ── 폰트 ────────────────────────────────────────────
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.otf       binary
+
+# ── 압축 / 실행 ─────────────────────────────────────
+*.zip       binary
+*.gz        binary
+*.7z        binary
+*.jar       binary
+*.wasm      binary
+
+# ── diff 힌트 ───────────────────────────────────────
+# 변경된 부분이 어느 함수·절에 속하는지 diff 헤더에 표시된다.
+*.md        diff=markdown
+*.cs        diff=csharp
+*.java      diff=java
+*.html      diff=html
+*.css       diff=css
