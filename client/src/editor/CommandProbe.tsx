@@ -99,7 +99,7 @@ export function CommandProbe() {
         <button type="button" disabled={future.length === 0} onClick={redo}>
           다시 실행 ({future.length})
         </button>
-        <span className={styles.hint}>Ctrl+Z · Ctrl+Shift+Z</span>
+        <span className={styles.hint}>Ctrl+Z · Ctrl+Shift+Z · Ctrl+Y</span>
       </div>
     </aside>
   )

@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import * as make from './factories'
-import { applyCommand, EMPTY_HISTORY, pushCommand, redo, revertCommand, undo } from './history'
+import {
+  applyCommand,
+  EMPTY_HISTORY,
+  pushCommand,
+  redo,
+  revertCommand,
+  targetNodeId,
+  undo,
+} from './history'
 import { COMMAND_TYPES } from './registry'
 import { CommandParseError, parseCommand, serializeCommand, validateCommand } from './serialize'
-import type { Command, CommandType } from './types'
+import { COMMAND_VERSION, type Command, type CommandType } from './types'
 import { useEditorStore } from '../scene/store'
 import { EMPTY_SCENE, IDENTITY_TRANSFORM, type SceneState } from '../scene/types'
 
@@ -136,83 +144,119 @@ describe('커맨드 JSON 왕복', () => {
  * 터지지 않고 노드의 필드를 `undefined` 로 덮었다.
  */
 describe('밖에서 들어온 payload 검증', () => {
+  /** 검사 순서상 version 이 맨 앞이다. 버전을 빼먹으면 모양 검사에 닿지도 못하고 거절된다 */
+  const at = (type: string, payload: unknown) => ({ version: COMMAND_VERSION, type, payload })
+
+  const plainNode = (overrides: Record<string, unknown> = {}) => ({
+    id: 'x',
+    name: 'x',
+    kind: 'box',
+    transform: IDENTITY_TRANSFORM,
+    parentId: null,
+    childIds: [],
+    ...overrides,
+  })
+
   const rejected: Record<string, unknown> = {
-    'addNode — payload 가 비어 있다': { type: 'addNode', payload: {} },
-    'renameNode — payload 가 배열이다': { type: 'renameNode', payload: [] },
-    'renameNode — to 가 없다': { type: 'renameNode', payload: { nodeId: 'a', from: 'x' } },
-    'addNode — node 에 childIds 가 없다': {
-      type: 'addNode',
-      payload: {
-        node: { id: 'x', name: 'x', kind: 'box', transform: IDENTITY_TRANSFORM, parentId: null },
-        parentId: null,
-        index: 0,
-      },
-    },
-    'addNode — kind 를 모른다': {
-      type: 'addNode',
-      payload: {
-        node: {
-          id: 'x',
-          name: 'x',
-          kind: 'blackHole',
-          transform: IDENTITY_TRANSFORM,
-          parentId: null,
-          childIds: [],
-        },
-        parentId: null,
-        index: 0,
-      },
-    },
-    'setTransform — to 의 position 이 길이 2 다': {
-      type: 'setTransform',
-      payload: {
-        nodeId: 'a',
-        from: IDENTITY_TRANSFORM,
-        to: { position: [0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-      },
-    },
-    'setTransform — to 가 통째로 없다': {
-      type: 'setTransform',
-      payload: { nodeId: 'a', from: IDENTITY_TRANSFORM },
-    },
-    'setMaterial — roughness 가 문자열이다': {
-      type: 'setMaterial',
-      payload: {
-        nodeId: 'a',
-        from: { color: '#fff', roughness: 0.5, metalness: 0 },
-        to: { color: '#fff', roughness: '높음', metalness: 0 },
-      },
-    },
-    'removeNode — removed 에 rootNodeId 가 없다': {
-      type: 'removeNode',
-      payload: {
-        removed: [
-          {
-            id: 'other',
-            name: 'x',
-            kind: 'box',
-            transform: IDENTITY_TRANSFORM,
-            parentId: null,
-            childIds: [],
-          },
-        ],
-        rootNodeId: 'missing',
-        parentId: null,
-        index: 0,
-      },
-    },
-    'reparentNode — to.index 가 음수다': {
-      type: 'reparentNode',
-      payload: {
-        nodeId: 'a',
-        from: { parentId: null, index: 0 },
-        to: { parentId: null, index: -1 },
-      },
+    'addNode — payload 가 비어 있다': at('addNode', {}),
+    'renameNode — payload 가 배열이다': at('renameNode', []),
+    'renameNode — to 가 없다': at('renameNode', { nodeId: 'a', from: 'x' }),
+
+    'addNode — node 에 childIds 가 없다': at('addNode', {
+      node: { id: 'x', name: 'x', kind: 'box', transform: IDENTITY_TRANSFORM, parentId: null },
+      parentId: null,
+      index: 0,
+    }),
+    'addNode — kind 를 모른다': at('addNode', {
+      node: plainNode({ kind: 'blackHole' }),
+      parentId: null,
+      index: 0,
+    }),
+    // 붙는 데는 성공하고 그 노드를 되돌리는 순간 터진다 — 그 뒤로 되돌리기가 영영 막힌다
+    'addNode — 씬에 없는 자식을 데리고 온다': at('addNode', {
+      node: plainNode({ childIds: ['유령'] }),
+      parentId: null,
+      index: 0,
+    }),
+
+    'setTransform — to 의 position 이 길이 2 다': at('setTransform', {
+      nodeId: 'a',
+      from: IDENTITY_TRANSFORM,
+      to: { position: [0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    }),
+    'setTransform — to 가 통째로 없다': at('setTransform', {
+      nodeId: 'a',
+      from: IDENTITY_TRANSFORM,
+    }),
+    'setMaterial — roughness 가 문자열이다': at('setMaterial', {
+      nodeId: 'a',
+      from: { color: '#fff', roughness: 0.5, metalness: 0 },
+      to: { color: '#fff', roughness: '높음', metalness: 0 },
+    }),
+
+    'removeNode — removed 에 rootNodeId 가 없다': at('removeNode', {
+      removed: [plainNode({ id: 'other' })],
+      rootNodeId: 'missing',
+      parentId: null,
+      index: 0,
+    }),
+    // 되살리기가 이 목록만 보고 계층을 세우므로, 닫히지 않으면 복원된 씬에 유령 참조가 남는다
+    'removeNode — 목록 밖의 자식을 가리킨다': at('removeNode', {
+      removed: [plainNode({ id: 'root', childIds: ['목록에-없음'] })],
+      rootNodeId: 'root',
+      parentId: null,
+      index: 0,
+    }),
+    'removeNode — 목록 밖의 부모를 가리킨다': at('removeNode', {
+      removed: [plainNode({ id: 'root' }), plainNode({ id: 'child', parentId: '남' })],
+      rootNodeId: 'root',
+      parentId: null,
+      index: 0,
+    }),
+    'removeNode — 같은 id 가 두 번 있다': at('removeNode', {
+      removed: [plainNode({ id: 'root' }), plainNode({ id: 'root' })],
+      rootNodeId: 'root',
+      parentId: null,
+      index: 0,
+    }),
+
+    'reparentNode — to.index 가 음수다': at('reparentNode', {
+      nodeId: 'a',
+      from: { parentId: null, index: 0 },
+      to: { parentId: null, index: -1 },
+    }),
+
+    '버전이 없다': { type: 'renameNode', payload: { nodeId: 'a', from: 'A', to: 'B' } },
+    '버전이 다르다': {
+      version: COMMAND_VERSION + 1,
+      type: 'renameNode',
+      payload: { nodeId: 'a', from: 'A', to: 'B' },
     },
   }
 
   it.each(Object.keys(rejected))('%s → 거절한다', (label) => {
     expect(() => validateCommand(rejected[label])).toThrow(CommandParseError)
+  })
+
+  /**
+   * 위의 거절 표본들이 **모양 때문에 거절된 것이 맞는지** 확인한다. 버전 검사가 맨 앞에 있어서,
+   * 표본에 버전을 빼먹으면 전부 "판이 다릅니다"로 거절되고 모양 검사는 한 줄도 안 돈다 —
+   * 테스트는 초록색인데 검사하려던 것은 하나도 검사하지 않는 상태가 된다.
+   */
+  it('모양 표본은 버전 때문에 거절된 것이 아니다', () => {
+    for (const [label, sample] of Object.entries(rejected)) {
+      if (label.startsWith('버전')) continue
+
+      let message = ''
+      try {
+        validateCommand(sample)
+      } catch (error) {
+        message = error instanceof Error ? error.message : String(error)
+      }
+
+      expect(message, label).not.toBe('')
+      expect(message, label).not.toContain('판이 다릅니다')
+    }
   })
 
   it('팩토리가 만든 커맨드는 전부 통과한다', () => {
@@ -222,6 +266,84 @@ describe('밖에서 들어온 payload 검증', () => {
     for (const type of COMMAND_TYPES) {
       expect(() => validateCommand(JSON.parse(serializeCommand(commands[type])))).not.toThrow()
     }
+  })
+})
+
+/**
+ * 모양 검증을 통과한 커맨드가 씬과 만났을 때. 여기서 막지 못하면 **화면에는 아무 이상이
+ * 없는 채로 씬이 망가지고**, 몇 조작 뒤의 되돌리기에서야 터진다.
+ */
+describe('모양은 맞지만 씬과 어긋나는 커맨드', () => {
+  /**
+   * `state.nodes` 는 평범한 객체라 `nodes['constructor']` 가 `Object` 생성자를 돌려준다.
+   * 함수는 truthy 라 "있는 노드"로 통과하고, 그것을 스프레드하면 `id` 가 없는 껍데기가 나와
+   * `nodes['undefined']` 자리에 유령 노드가 들어앉는다.
+   */
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])(
+    "'%s' 를 씬에 있는 노드로 착각하지 않는다",
+    (protoKey) => {
+      const { scene } = buildScene()
+      const command: Command = {
+        version: COMMAND_VERSION,
+        type: 'renameNode',
+        payload: { nodeId: protoKey, from: 'A', to: 'B' },
+      }
+
+      // 모양은 흠잡을 데가 없다 — 문지기는 통과시킨다
+      expect(() => validateCommand(command)).not.toThrow()
+      // 막는 것은 씬을 아는 쪽이다
+      expect(() => applyCommand(scene, command)).toThrow(/씬에 없는 노드/)
+      expect(Object.keys(scene.nodes)).toHaveLength(4)
+    },
+  )
+
+  /**
+   * 적용은 살아 있는 씬의 서브트리를 지우고 되돌리기는 payload 의 목록만 되살린다. 둘이
+   * 어긋나면 지운 것 중 일부가 영영 돌아오지 않는다 — 협업에서 상대가 커맨드를 만든 뒤 내
+   * 쪽에서 그 아래에 자식이 생겼을 때가 그 상태다.
+   */
+  it('삭제할 서브트리가 기록과 다르면 지우지 않고 거절한다', () => {
+    const { scene, ids } = buildScene()
+    const command = make.removeNode(scene, ids.group)
+
+    // 커맨드를 만든 뒤 그룹 밑에 자식이 하나 더 생겼다
+    const latecomer = make.createNode('box', '늦게 온 박스')
+    const drifted = applyCommand(scene, make.addNode(scene, latecomer, ids.group))
+
+    expect(() => applyCommand(drifted, command)).toThrow(/서브트리가 커맨드에 기록된 것과 다릅니다/)
+    expect(drifted.nodes[latecomer.id]).toBeDefined()
+    expect(drifted.nodes[ids.group]).toBeDefined()
+  })
+
+  it('원래 씬에서는 그대로 지워진다', () => {
+    const { scene, ids } = buildScene()
+    const command = make.removeNode(scene, ids.group)
+
+    expect(() => applyCommand(scene, command)).not.toThrow()
+  })
+})
+
+/**
+ * 커맨드가 건드리는 노드를 타입별 분기 없이 꺼낼 수 있어야 한다. 협업 lock 검사(K-3)와
+ * 전파 봉투(`docs/ARCHITECTURE.md` 6절)가 그것을 쓰는데, 커맨드 밖에서 `switch` 로 짜면
+ * 타입을 더할 때 고치는 것을 잊어도 컴파일이 통과한다.
+ */
+describe('대상 노드 접근자', () => {
+  it.each(COMMAND_TYPES)('%s — 대상 노드를 꺼낼 수 있다', (type) => {
+    const { scene, ids } = buildScene()
+    const target = targetNodeId(sampleCommands(scene, ids)[type])
+
+    expect(typeof target).toBe('string')
+    expect(target.length).toBeGreaterThan(0)
+  })
+
+  it('타입마다 payload 안의 자리가 다른데도 같은 답을 준다', () => {
+    const { scene, ids } = buildScene()
+    const added = make.createNode('box', '새 박스')
+
+    expect(targetNodeId(make.addNode(scene, added))).toBe(added.id)
+    expect(targetNodeId(make.removeNode(scene, ids.group))).toBe(ids.group)
+    expect(targetNodeId(make.renameNode(scene, ids.box, 'x'))).toBe(ids.box)
   })
 })
 
@@ -329,26 +451,47 @@ describe('적용과 되돌리기', () => {
 })
 
 describe('히스토리', () => {
+  /**
+   * **커맨드를 앞 커맨드의 결과 위에서 만든다.** 서로 다른 노드를 건드리는 커맨드를 같은 base
+   * 씬에서 만들어 늘어놓으면 순서를 바꿔도 결과가 같은 집합이 되고, 그러면 순서에 의존하는
+   * 버그를 원리적으로 잡을 수 없다 — 통과해도 아무것도 보증하지 않는 단언이 된다.
+   *
+   * 그래서 `addNode` 와 `reparentNode` 를 반드시 넣는다. **apply/revert 가 필드 교환이 아닌
+   * 커맨드가 이 둘뿐**이고, 계층이 실제로 접혔다 펴지는 것도 이 둘에서만 일어난다.
+   */
   it('undo 와 redo 를 반복해도 상태가 어긋나지 않는다', () => {
     const { scene, ids } = buildScene()
 
-    const commands = [
-      make.renameNode(scene, ids.box, '1차'),
-      make.setTransform(scene, ids.sphere, {
-        position: [5, 0, 0],
-        rotation: [0, 0, 0],
-        scale: [1, 1, 1],
-      }),
-      make.removeNode(scene, ids.loose),
-    ]
-
+    const commands: Command[] = []
+    const checkpoints = [scene]
     let current = { scene, history: EMPTY_HISTORY }
-    const checkpoints = [current.scene]
 
-    for (const command of commands) {
+    /** 직전 결과 위에서 커맨드를 만들어 밀어 넣는다 */
+    function step(make: (state: SceneState) => Command) {
+      const command = make(current.scene)
+      commands.push(command)
       current = pushCommand(current.scene, current.history, command)
       checkpoints.push(current.scene)
     }
+
+    const added = make.createNode('box', '나중에 넣은 박스')
+
+    step((s) => make.renameNode(s, ids.box, '1차'))
+    step((s) => make.addNode(s, added, ids.group, 0)) // 그룹 맨 앞에 끼워 넣는다
+    step((s) => make.reparentNode(s, ids.sphere, ids.loose, 0)) // 다른 부모로
+    step((s) =>
+      make.setTransform(s, added.id, {
+        position: [5, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [2, 2, 2],
+      }),
+    )
+    step((s) => make.reparentNode(s, ids.group, null, 0)) // 자손을 데리고 뿌리 맨 앞으로
+    step((s) => make.removeNode(s, ids.loose)) // 아까 옮겨온 구까지 함께 지운다
+
+    // 중간에 실제로 계층이 바뀌었는지 확인한다. 안 바뀌었으면 위 시퀀스가 헛돈 것이다
+    expect(checkpoints[3]?.nodes[ids.sphere]?.parentId).toBe(ids.loose)
+    expect(checkpoints[6]?.nodes[ids.sphere]).toBeUndefined()
 
     // 전부 되돌리기
     for (let i = commands.length - 1; i >= 0; i -= 1) {
@@ -362,11 +505,17 @@ describe('히스토리', () => {
       expect(current.scene).toStrictEqual(checkpoints[i + 1])
     }
 
-    // 한 번 더 왕복해도 같은 자리
-    for (let i = commands.length - 1; i >= 0; i -= 1) {
-      current = undo(current.scene, current.history)
+    // 세 번째 왕복까지 — `revert∘apply = id` 만으로는 `apply∘revert∘apply = apply` 가 안 나온다
+    for (let round = 0; round < 2; round += 1) {
+      for (let i = commands.length - 1; i >= 0; i -= 1) {
+        current = undo(current.scene, current.history)
+        expect(current.scene).toStrictEqual(checkpoints[i])
+      }
+      for (let i = 0; i < commands.length; i += 1) {
+        current = redo(current.scene, current.history)
+        expect(current.scene).toStrictEqual(checkpoints[i + 1])
+      }
     }
-    expect(current.scene).toStrictEqual(checkpoints[0])
   })
 
   it('새 커맨드를 실행하면 redo 스택을 버린다', () => {

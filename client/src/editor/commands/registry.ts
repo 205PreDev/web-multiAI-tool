@@ -1,5 +1,6 @@
 import {
   attachNode,
+  collectSubtreeIds,
   detachNodeOnly,
   detachSubtree,
   getNode,
@@ -34,6 +35,29 @@ function restoreSubtree(state: SceneState, payload: CommandMap['removeNode']): S
   return next
 }
 
+/**
+ * 삭제할 서브트리가 payload 에 적힌 것과 정확히 같은지 확인한다.
+ *
+ * **적용과 되돌리기의 진실 원천이 다르기 때문이다.** 적용은 살아 있는 씬의 서브트리를 지우고
+ * 되돌리기는 payload 의 `removed` 만 되살린다. 둘이 어긋난 상태에서 적용하면 payload 에 없는
+ * 노드가 삭제되고 — 되돌려도 돌아오지 않는다. 협업(K-4)에서 상대가 커맨드를 만든 뒤 내 쪽에서
+ * 그 아래에 자식이 하나 생겨 있으면 바로 이 상태가 된다.
+ *
+ * 그래서 **조용히 다른 결과를 내는 대신 거절한다.** 커맨드는 어느 씬에서 재생하든 같은 결과를
+ * 내거나 아무 일도 하지 않아야 하고, 그 중간은 없다.
+ */
+function assertSubtreeMatches(state: SceneState, payload: CommandMap['removeNode']): void {
+  const live = new Set(collectSubtreeIds(state, payload.rootNodeId))
+  const recorded = new Set(payload.removed.map((node) => node.id))
+
+  if (live.size !== recorded.size || [...live].some((id) => !recorded.has(id))) {
+    throw new Error(
+      `삭제할 서브트리가 커맨드에 기록된 것과 다릅니다: ${payload.rootNodeId} ` +
+        `(씬 ${live.size}개 / 기록 ${recorded.size}개)`,
+    )
+  }
+}
+
 /** 노드를 자손째로 다른 부모 밑으로 옮긴다. 자손은 `nodes` 에 그대로 있으므로 따라온다. */
 function moveNode(state: SceneState, nodeId: NodeId, parentId: NodeId | null, index: number) {
   if (isDescendant(state, nodeId, parentId)) {
@@ -56,13 +80,18 @@ export const COMMANDS: { [T in CommandType]: CommandDefinition<T> } = {
     apply: (state, { node, parentId, index }) => attachNode(state, node, parentId, index),
     revert: (state, { node }) => detachSubtree(state, node.id),
     describe: ({ node }) => `${node.name} 추가`,
+    targetNodeId: ({ node }) => node.id,
   },
 
   removeNode: {
-    apply: (state, { rootNodeId }) => detachSubtree(state, rootNodeId),
+    apply: (state, payload) => {
+      assertSubtreeMatches(state, payload)
+      return detachSubtree(state, payload.rootNodeId)
+    },
     revert: restoreSubtree,
     describe: ({ removed, rootNodeId }) =>
       `${removed.find((n) => n.id === rootNodeId)?.name ?? '노드'} 삭제`,
+    targetNodeId: ({ rootNodeId }) => rootNodeId,
   },
 
   setTransform: {
@@ -70,6 +99,7 @@ export const COMMANDS: { [T in CommandType]: CommandDefinition<T> } = {
     revert: (state, { nodeId, from }) =>
       setNode(state, { ...getNode(state, nodeId), transform: from }),
     describe: () => '트랜스폼 변경',
+    targetNodeId: ({ nodeId }) => nodeId,
   },
 
   setMaterial: {
@@ -77,18 +107,21 @@ export const COMMANDS: { [T in CommandType]: CommandDefinition<T> } = {
     revert: (state, { nodeId, from }) =>
       setNode(state, { ...getNode(state, nodeId), material: from }),
     describe: () => '머티리얼 변경',
+    targetNodeId: ({ nodeId }) => nodeId,
   },
 
   renameNode: {
     apply: (state, { nodeId, to }) => setNode(state, { ...getNode(state, nodeId), name: to }),
     revert: (state, { nodeId, from }) => setNode(state, { ...getNode(state, nodeId), name: from }),
     describe: ({ to }) => `이름을 ${to} 로 변경`,
+    targetNodeId: ({ nodeId }) => nodeId,
   },
 
   reparentNode: {
     apply: (state, { nodeId, to }) => moveNode(state, nodeId, to.parentId, to.index),
     revert: (state, { nodeId, from }) => moveNode(state, nodeId, from.parentId, from.index),
     describe: () => '계층 이동',
+    targetNodeId: ({ nodeId }) => nodeId,
   },
 }
 

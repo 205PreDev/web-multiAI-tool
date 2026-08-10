@@ -1,7 +1,7 @@
 import { getNode, indexOfNode, collectSubtreeIds } from '../scene/mutations'
 import { IDENTITY_TRANSFORM, type MaterialState, type NodeId, type NodeKind } from '../scene/types'
 import type { SceneNode, SceneState, Transform } from '../scene/types'
-import type { Command } from './types'
+import { COMMAND_VERSION, type Command } from './types'
 
 /**
  * 커맨드를 만드는 곳. **현재 상태를 읽는 일은 전부 여기서 끝난다.**
@@ -57,6 +57,7 @@ export function addNode(
 ): Command<'addNode'> {
   const siblings = parentId === null ? state.rootIds : getNode(state, parentId).childIds
   return {
+    version: COMMAND_VERSION,
     type: 'addNode',
     payload: { node: { ...node, parentId }, parentId, index: index ?? siblings.length },
   }
@@ -67,6 +68,7 @@ export function removeNode(state: SceneState, nodeId: NodeId): Command<'removeNo
   const removed = collectSubtreeIds(state, nodeId).map((id) => getNode(state, id))
 
   return {
+    version: COMMAND_VERSION,
     type: 'removeNode',
     payload: {
       removed,
@@ -82,7 +84,11 @@ export function setTransform(
   nodeId: NodeId,
   to: Transform,
 ): Command<'setTransform'> {
-  return { type: 'setTransform', payload: { nodeId, from: getNode(state, nodeId).transform, to } }
+  return {
+    version: COMMAND_VERSION,
+    type: 'setTransform',
+    payload: { nodeId, from: getNode(state, nodeId).transform, to },
+  }
 }
 
 export function setMaterial(
@@ -93,11 +99,15 @@ export function setMaterial(
   const from = getNode(state, nodeId).material
   if (!from) throw new Error(`머티리얼이 없는 노드입니다: ${nodeId}`)
 
-  return { type: 'setMaterial', payload: { nodeId, from, to } }
+  return { version: COMMAND_VERSION, type: 'setMaterial', payload: { nodeId, from, to } }
 }
 
 export function renameNode(state: SceneState, nodeId: NodeId, to: string): Command<'renameNode'> {
-  return { type: 'renameNode', payload: { nodeId, from: getNode(state, nodeId).name, to } }
+  return {
+    version: COMMAND_VERSION,
+    type: 'renameNode',
+    payload: { nodeId, from: getNode(state, nodeId).name, to },
+  }
 }
 
 export function reparentNode(
@@ -109,6 +119,7 @@ export function reparentNode(
   const node = getNode(state, nodeId)
 
   return {
+    version: COMMAND_VERSION,
     type: 'reparentNode',
     payload: {
       nodeId,
