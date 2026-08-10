@@ -1,4 +1,5 @@
-import { GizmoHelper, GizmoViewport, OrbitControls } from '@react-three/drei'
+import { GizmoHelper, OrbitControls } from '@react-three/drei'
+import { AxisGizmo } from './AxisGizmo'
 import { SceneDiagnostics } from './SceneDiagnostics'
 
 /**
@@ -55,9 +56,10 @@ export function Scene() {
 
       <OrbitControls makeDefault enableDamping target={[0, 0.5, 0]} />
 
-      {/* 화면 우측 하단의 방향 표시. 축을 누르면 그 방향으로 카메라가 돈다. */}
+      {/* 화면 우측 하단의 방향 표시. 축을 누르면 그 방향으로 카메라가 돈다.
+          위젯이 drei 의 GizmoViewport 가 아닌 이유는 AxisGizmo.tsx 에 적었다. */}
       <GizmoHelper alignment="bottom-right" margin={[72, 72]}>
-        <GizmoViewport axisColors={['#e05a5a', '#5ac46a', '#4a90d9']} labelColor="#e4e8ee" />
+        <AxisGizmo />
       </GizmoHelper>
 
       <SceneDiagnostics />

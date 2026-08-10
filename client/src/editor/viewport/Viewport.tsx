@@ -3,6 +3,7 @@ import { Suspense, useMemo } from 'react'
 import { createRenderer } from './createRenderer'
 import { readRendererRequest } from './rendererReport'
 import { Scene } from './Scene'
+import { ViewportErrorBoundary } from './ViewportErrorBoundary'
 import styles from './Viewport.module.css'
 
 export function Viewport() {
@@ -12,15 +13,17 @@ export function Viewport() {
 
   return (
     <div className={styles.viewport}>
-      <Canvas
-        shadows
-        camera={{ position: [4, 3, 5], fov: 50 }}
-        gl={(props) => createRenderer(props, request)}
-      >
-        <Suspense fallback={null}>
-          <Scene />
-        </Suspense>
-      </Canvas>
+      <ViewportErrorBoundary>
+        <Canvas
+          shadows
+          camera={{ position: [4, 3, 5], fov: 50 }}
+          gl={(props) => createRenderer(props, request)}
+        >
+          <Suspense fallback={null}>
+            <Scene />
+          </Suspense>
+        </Canvas>
+      </ViewportErrorBoundary>
     </div>
   )
 }

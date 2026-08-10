@@ -17,15 +17,31 @@ THREE.NodeBuilder: Material "ShaderMaterial" is not compatible.
 1. **`warnIncompatibleMaterials.ts`** — 개발 빌드에서 씬을 훑어 범인의 이름과 경로를 찍습니다. `SceneDiagnostics` 가 씬 트리 끝에서 한 번 호출합니다.
 2. **이 문서** — 아래 목록을 갱신합니다.
 
+## 비호환은 머티리얼만이 아니다 — 렌더러 API 도 다르다
+
+`WebGPURenderer` 에는 **`gl.capabilities` 가 없습니다.** `WebGLRenderer` 전용이기 때문입니다. 이것을 읽는 코드는 경고가 아니라 **`Cannot read properties of undefined` 로 앱 전체를 죽입니다.**
+
+drei 의 `GizmoViewport` 가 `gl.capabilities.getMaxAnisotropy()` 한 줄 때문에 여기 걸렸습니다. 머티리얼만 확인하고 통과시켰다가 실제로 크래시를 봤습니다 — **확인해야 할 표면은 머티리얼과 렌더러 API 둘입니다.**
+
+없는 것으로 확인된 API: `capabilities` · `extensions` · `outputEncoding`.
+
 ### drei 컴포넌트를 쓰기 전에 확인한다
 
-`node_modules/@react-three/drei/core/<이름>.js` 에서 `shaderMaterial` 을 찾습니다. 있으면 WebGPU 에서 동작하지 않습니다.
+`node_modules/@react-three/drei/core/<이름>.js` 에서 **둘 다** 찾습니다.
+
+```bash
+grep -n "shaderMaterial"                     # 머티리얼 — 조용히 사라짐
+grep -n "capabilities\|extensions\|outputEncoding"   # 렌더러 API — 앱이 죽음
+```
 
 | 컴포넌트 | 상태 | 비고 |
 | --- | --- | --- |
 | `Grid` | ❌ 쓸 수 없음 | `shaderMaterial` 기반. three 코어의 `GridHelper` 로 대체 |
-| `GizmoHelper` · `GizmoViewport` | ✅ 사용 중 | `meshBasicMaterial` 과 `spriteMaterial` 만 씀 |
-| `OrbitControls` | ✅ 사용 중 | 머티리얼을 만들지 않음 |
+| `GizmoViewport` · `GizmoViewcube` | ❌ 쓸 수 없음 | `gl.capabilities.getMaxAnisotropy()`. `AxisGizmo.tsx` 로 대체 |
+| `GizmoHelper` | ✅ 사용 중 | Hud 와 카메라 동기화만. `autoClear`·`clearDepth`·`render` 는 WebGPU 에도 있음 |
+| `Hud` | ✅ 간접 사용 | 위와 같음 |
+| `OrbitControls` | ✅ 사용 중 | 머티리얼도 렌더러 API 도 건드리지 않음 |
+| `Text` (troika) | ⚠️ 미확인 | 자체 셰이더를 만들므로 도입 전 확인 필요 |
 
 **표에 없는 것을 새로 도입할 때는 먼저 확인하고 이 표를 채웁니다.** WebGPU를 고른 대가이며, WebGL2 폴백에서만 동작하는 화면을 만들면 N-1의 의미가 사라집니다.
 
