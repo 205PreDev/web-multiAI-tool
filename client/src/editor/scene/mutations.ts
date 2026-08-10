@@ -5,10 +5,20 @@ import type { NodeId, SceneNode, SceneState } from './types'
  * 여기 있는 함수는 전부 순수하며 입력 상태를 바꾸지 않는다.
  */
 
+/**
+ * **`Object.hasOwn` 이어야 한다.** `state.nodes` 는 평범한 객체라 `nodes['constructor']` 나
+ * `nodes['toString']` 이 `Object.prototype` 의 함수를 돌려주고, 함수는 truthy 라서 `if (!node)`
+ * 가드를 그냥 통과한다. 밖에서 들어온 커맨드(F-3 · K-4)의 `nodeId` 는 임의의 문자열이므로
+ * 이것은 이론이 아니다 — `{"type":"renameNode","payload":{"nodeId":"constructor",…}}` 하나로
+ * `kind` 도 `transform` 도 없는 유령 노드가 씬에 들어앉는다.
+ */
+export function hasNode(state: SceneState, id: NodeId): boolean {
+  return Object.hasOwn(state.nodes, id)
+}
+
 export function getNode(state: SceneState, id: NodeId): SceneNode {
-  const node = state.nodes[id]
-  if (!node) throw new Error(`씬에 없는 노드입니다: ${id}`)
-  return node
+  if (!hasNode(state, id)) throw new Error(`씬에 없는 노드입니다: ${id}`)
+  return state.nodes[id] as SceneNode
 }
 
 function siblingsOf(state: SceneState, parentId: NodeId | null): readonly NodeId[] {
@@ -63,7 +73,7 @@ export function attachNode(
   parentId: NodeId | null,
   index: number,
 ): SceneState {
-  if (Object.hasOwn(state.nodes, node.id)) {
+  if (hasNode(state, node.id)) {
     throw new Error(`이미 씬에 있는 노드 id 입니다: ${node.id}`)
   }
 

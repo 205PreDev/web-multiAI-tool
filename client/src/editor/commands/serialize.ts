@@ -1,6 +1,6 @@
 import { NODE_KINDS, type NodeKind } from '../scene/types'
 import { COMMANDS } from './registry'
-import type { Command, CommandType } from './types'
+import { COMMAND_VERSION, type Command, type CommandType } from './types'
 
 /**
  * 커맨드는 이미 순수 데이터라 직렬화에 변환이 필요 없다. **필요한 것은 반대 방향의 검증이다** —
@@ -85,7 +85,7 @@ function material(value: unknown, path: string): void {
   num(fields.metalness, `${path}.metalness`)
 }
 
-function sceneNode(value: unknown, path: string): void {
+function sceneNode(value: unknown, path: string): Fields {
   const fields = object(value, path)
   nodeId(fields.id, `${path}.id`)
   str(fields.name, `${path}.name`)
@@ -99,6 +99,8 @@ function sceneNode(value: unknown, path: string): void {
   if (fields.material !== undefined) material(fields.material, `${path}.material`)
   nullableNodeId(fields.parentId, `${path}.parentId`)
   nodeIdList(fields.childIds, `${path}.childIds`)
+
+  return fields
 }
 
 function placement(value: unknown, path: string): void {
@@ -109,7 +111,16 @@ function placement(value: unknown, path: string): void {
 
 const PAYLOAD_VALIDATORS: { [T in CommandType]: (payload: Fields) => void } = {
   addNode: (payload) => {
-    sceneNode(payload.node, 'node')
+    const node = sceneNode(payload.node, 'node')
+
+    // **자식을 데리고 들어올 수 없다.** childIds 에 씬에 없는 id 가 적혀 있어도 붙는데,
+    // 그러면 그 노드를 되돌리는 순간 collectSubtreeIds 가 없는 자식을 찾다 던지고 —
+    // 예외가 히스토리를 pop 하기 전에 나므로 **그 뒤로 Ctrl+Z 가 영영 같은 자리에서 막힌다.**
+    // 화면에는 아무 이상이 없어서 무엇이 씬을 망가뜨렸는지 짚을 수도 없다.
+    if ((node.childIds as unknown[]).length > 0) {
+      fail('addNode 는 자식이 없는 노드만 더할 수 있습니다')
+    }
+
     nullableNodeId(payload.parentId, 'parentId')
     index(payload.index, 'index')
   },
@@ -118,16 +129,28 @@ const PAYLOAD_VALIDATORS: { [T in CommandType]: (payload: Fields) => void } = {
     if (!Array.isArray(payload.removed) || payload.removed.length === 0) {
       fail('removed 는 비어 있지 않은 배열이어야 합니다')
     }
-    payload.removed.forEach((node, i) => sceneNode(node, `removed[${i}]`))
+    const removed = payload.removed.map((node, i) => sceneNode(node, `removed[${i}]`))
 
     const rootNodeId = str(payload.rootNodeId, 'rootNodeId')
-    // 되살리기가 removed 안에서 뿌리를 찾아 원래 자리에 넣는다. 없으면 계층이 어긋난 채 복원된다
-    if (!payload.removed.some((node) => (node as Fields).id === rootNodeId)) {
-      fail('removed 에 rootNodeId 에 해당하는 노드가 없습니다')
-    }
-
     nullableNodeId(payload.parentId, 'parentId')
     index(payload.index, 'index')
+
+    // **목록이 그 자체로 닫힌 서브트리여야 한다.** 되살리기는 이 목록만 보고 계층을 다시
+    // 세우므로, 목록 안에서 부모·자식 링크가 닫히지 않으면 복원된 씬에 유령 참조가 남는다.
+    // 그 씬은 화면상 멀쩡하고 다음 되돌리기에서야 터진다.
+    const ids = new Set(removed.map((node) => node.id as string))
+    if (ids.size !== removed.length) fail('removed 에 같은 id 가 두 번 있습니다')
+    if (!ids.has(rootNodeId)) fail('removed 에 rootNodeId 에 해당하는 노드가 없습니다')
+
+    for (const node of removed) {
+      for (const childId of node.childIds as string[]) {
+        if (!ids.has(childId)) fail(`removed 안에 없는 자식을 가리킵니다: ${childId}`)
+      }
+      // 뿌리의 부모는 목록 밖(씬에 남는 쪽)에 있다. 나머지는 전부 목록 안에 부모가 있어야 한다
+      if (node.id !== rootNodeId && !ids.has(node.parentId as string)) {
+        fail(`removed 안에 없는 부모를 가리킵니다: ${String(node.parentId)}`)
+      }
+    }
   },
 
   setTransform: (payload) => {
@@ -176,6 +199,14 @@ export function parseCommand(json: string): Command {
 
 export function validateCommand(raw: unknown): Command {
   const candidate = object(raw, '커맨드')
+
+  // 버전을 타입보다 먼저 본다. 판이 다르면 payload 를 우리 규칙으로 읽을 근거가 없고,
+  // 그 경우 "알 수 없는 필드"라고 말하는 것보다 "판이 다르다"고 말하는 편이 고칠 수 있다
+  if (candidate.version !== COMMAND_VERSION) {
+    fail(
+      `커맨드 스키마 판이 다릅니다: ${String(candidate.version)} (이 클라이언트는 v${COMMAND_VERSION})`,
+    )
+  }
 
   if (!isCommandType(candidate.type)) {
     throw new CommandParseError(`알 수 없는 커맨드 타입입니다: ${String(candidate.type)}`)

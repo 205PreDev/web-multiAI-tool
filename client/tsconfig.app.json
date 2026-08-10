@@ -4,7 +4,8 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "esnext",
-    "types": ["vite/client"],
+    /* node — 저장소 규칙을 검사하는 테스트가 소스 파일을 읽는다(scene/sceneAccess.test.ts) */
+    "types": ["vite/client", "node"],
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
