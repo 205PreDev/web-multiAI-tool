@@ -331,7 +331,7 @@ DB와 스토리지는 이미 외부에 있으므로 움직일 것이 없습니�
 
 | # | 확인할 것 | 반영처 |
 | --- | --- | --- |
-| 1 | Tripo 유료 생성물의 상업적 이용·재배포 권리 | REQUIREMENTS 7.2, 갤러리 문구 |
+| 1 | Tripo 생성물의 상업적 이용·재배포 권리 — **부분 확인(2026-08-10):** 웹 구독 기준 Free는 공개·비상업, Pro 이상 비공개·상업. **남은 것: API 생성물에 같은 원칙이 적용되는지**(API Platform 약관·FAQ에서 확인) | REQUIREMENTS 7.2, 갤러리 문구 |
 | 2 | ElevenLabs 생성물의 이용 권리와 크레딧→달러 환산율 | REQUIREMENTS 7.2·9절 |
 | 3 | fal.ai TRELLIS 단가 | REQUIREMENTS 9절 |
 | 4 | Cloudflare R2(또는 대안) 프리 티어·이그레스 정책 | 8절 |
