@@ -1,8 +1,9 @@
 import type { Object3D } from 'three'
 
 /**
- * WebGPURenderer 는 NodeMaterial 위에 서 있어 raw `ShaderMaterial` 을 컴파일하지 못한다.
- * 그때 three 가 내는 경고는 이렇다.
+ * `WebGPURenderer` 는 NodeMaterial 파이프라인이라 raw `ShaderMaterial` 을 컴파일하지 못한다.
+ * **백엔드가 WebGL2로 폴백해도 마찬가지다** — 폴백은 GPU API 를 바꿀 뿐 머티리얼 체계를
+ * 바꾸지 않는다. 그때 three 가 내는 경고는 이렇다.
  *
  * ```
  * THREE.NodeBuilder: Material "ShaderMaterial" is not compatible.
