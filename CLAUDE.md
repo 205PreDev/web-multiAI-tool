@@ -289,6 +289,8 @@ http://localhost:3000/?renderer=nogpu       navigator.gpu 를 감춰 폴백 경�
 
 **뒤의 둘은 서로 다른 경로다.** `webgl2`는 처음부터 WebGL2 백엔드를 만들고, `nogpu`는 three.js의 `getFallback`을 실제로 태운다. N-1이 요구하는 "폴백이 실제로 실행되는 것"의 확인은 `nogpu` 쪽이다.
 
+**폴백해도 NodeMaterial 파이프라인은 그대로다.** 백엔드가 WebGL2로 내려가는 것이지 고전 `WebGLRenderer`가 되는 것이 아니므로, raw `ShaderMaterial`을 쓰는 라이브러리 컴포넌트는 어느 모드에서도 동작하지 않는다. 도입 전 확인 절차와 호환 표는 `client/src/editor/viewport/README.md`에 있고, 렌더러를 유지하기로 한 근거와 되돌리는 기준은 `docs/DECISIONS.md` D-21이다.
+
 ### 아직 없는 것
 
 `server/`(2단계) · `shared/postprocess/`(4단계) · `unity/`(8단계)는 README만 있다. 각 README에 그 폴더가 지는 제약이 적혀 있으므로 처음 손대기 전에 읽는다.
