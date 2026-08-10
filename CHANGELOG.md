@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-08-10 (6차 — ElevenAPI 탭 확인, ElevenLabs 항목 종결)
+
+사용자가 ElevenAPI 탭을 확인해 넘겨줬습니다. **API는 별도 요금제가 아니라 Creative 구독의 크레딧을 공용**하거나 종량제를 고르는 구조이고, 계산기가 API 사용 기준으로 Creator($11/월)를 추천합니다. 탭의 단가 카드는 TTS·STT 모델(우리 미사용)이며 효과음은 구독 크레딧 차감 그대로입니다.
+
+- ✏️ `docs/REQUIREMENTS.md` 7.2 — 확인 ④ 추가. **운영 계정 조건을 Starter 이상 구독(권장 Creator)으로 확정.** Creator의 121k크레딧 ≈ 효과음 3,000초
+- ✏️ `docs/REQUIREMENTS.md` 9절 — ElevenLabs 행에 운영 계정 조건 반영, 미확인 표기 제거
+- ✏️ `docs/ARCHITECTURE.md` 13절 2번 — **확인 완료.** 갤러리 재배포 문구 세부만 M9의 약관 재대조에 묶음
+
+이로써 13절 미확인 목록에서 제공자 권리·단가 계열(1·2·3번 일부)이 정리됐고, 남은 것은 Tripo 승인 발송(실행 항목), fal.ai TRELLIS 단가, 호스팅·스토리지 요금, OAuth 검수 요건입니다.
+
+---
+
 ## 2026-08-10 (5차 — ElevenLabs 요금제 확인 반영)
 
 사용자가 ElevenLabs 요금 페이지(ElevenCreative 탭)를 확인해 넘겨줬습니다. "API가 없다"는 첫인상은 탭 구조 때문이었고 — **ElevenAPI 탭이 별도로 존재** — 그 탭 확인만 남았습니다.
