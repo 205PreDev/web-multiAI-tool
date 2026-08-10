@@ -1,4 +1,10 @@
-import { attachNode, detachSubtree, getNode, isDescendant } from '../scene/mutations'
+import {
+  attachNode,
+  detachNodeOnly,
+  detachSubtree,
+  getNode,
+  isDescendant,
+} from '../scene/mutations'
 import type { NodeId, SceneNode, SceneState } from '../scene/types'
 import type { CommandDefinition, CommandMap, CommandType } from './types'
 
@@ -28,28 +34,14 @@ function restoreSubtree(state: SceneState, payload: CommandMap['removeNode']): S
   return next
 }
 
+/** 노드를 자손째로 다른 부모 밑으로 옮긴다. 자손은 `nodes` 에 그대로 있으므로 따라온다. */
 function moveNode(state: SceneState, nodeId: NodeId, parentId: NodeId | null, index: number) {
   if (isDescendant(state, nodeId, parentId)) {
     throw new Error('노드를 자기 자손 아래로 옮길 수 없습니다')
   }
 
   const node = getNode(state, nodeId)
-  const childIds = node.childIds
-  const detached = detachSubtreeKeepingNodes(state, nodeId)
-
-  return attachNode(detached, { ...node, childIds }, parentId, index)
-}
-
-/** 자손은 그대로 두고 뿌리만 형제 목록에서 떼어낸다. */
-function detachSubtreeKeepingNodes(state: SceneState, nodeId: NodeId): SceneState {
-  const node = getNode(state, nodeId)
-  const siblings = node.parentId === null ? state.rootIds : getNode(state, node.parentId).childIds
-  const remaining = siblings.filter((id) => id !== nodeId)
-
-  if (node.parentId === null) return { ...state, rootIds: remaining }
-
-  const parent = getNode(state, node.parentId)
-  return setNode(state, { ...parent, childIds: remaining })
+  return attachNode(detachNodeOnly(state, nodeId), node, parentId, index)
 }
 
 /**

@@ -42,6 +42,14 @@ export class ViewportErrorBoundary extends Component<Props, State> {
           자세한 내용은 브라우저 콘솔에 있습니다. WebGPU에서 동작하지 않는 컴포넌트가 원인일 수
           있습니다 — <code>client/src/editor/viewport/README.md</code> 의 호환 표를 확인하십시오.
         </p>
+        {/*
+          에러 경계는 한 번 걸리면 스스로 풀리지 않는다. **되돌리기로 원인을 없애도 화면은
+          그대로 죽어 있으므로** 다시 그려볼 길을 남긴다. 원인이 남아 있으면 곧바로 다시
+          이 화면이 뜬다 — 그것도 정보다.
+        */}
+        <button type="button" onClick={() => this.setState({ error: null })}>
+          다시 그리기
+        </button>
       </div>
     )
   }

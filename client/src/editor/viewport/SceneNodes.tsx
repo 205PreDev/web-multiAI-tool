@@ -36,12 +36,21 @@ function NodeView({ id }: { id: NodeId }) {
     )
   }
 
-  if (node.kind === 'directionalLight') {
-    return <directionalLight position={transform.position} intensity={2} castShadow />
-  }
-
-  if (node.kind === 'pointLight') {
-    return <pointLight position={transform.position} intensity={2} castShadow />
+  // 라이트도 group 으로 감싼다. 라이트 요소에 position 만 주면 **자식과 회전·스케일이
+  // 사라져** 씬 그래프에는 있는 노드가 화면에서 없어진다 — 계층 이동(reparentNode)은
+  // 어떤 종류 밑으로든 허용되므로 아웃라이너(A-2)와 뷰포트가 서로 다른 것을 말하게 된다.
+  // 라이트를 감싼 group 의 원점에 두므로 월드 위치는 이전과 같다.
+  if (node.kind === 'directionalLight' || node.kind === 'pointLight') {
+    return (
+      <group position={transform.position} rotation={transform.rotation} scale={transform.scale}>
+        {node.kind === 'directionalLight' ? (
+          <directionalLight intensity={2} castShadow />
+        ) : (
+          <pointLight intensity={2} castShadow />
+        )}
+        {children}
+      </group>
+    )
   }
 
   return (
