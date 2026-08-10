@@ -15,16 +15,24 @@ export interface MaterialState {
   metalness: number
 }
 
-export type NodeKind =
-  | 'group'
-  | 'box'
-  | 'sphere'
-  | 'cylinder'
-  | 'plane'
-  | 'directionalLight'
-  | 'pointLight'
-  /** 생성·임포트로 들어온 메시. 지오메트리는 에셋으로 따로 보관한다 */
-  | 'mesh'
+/**
+ * 목록을 값으로 두고 타입을 거기서 뽑는다. **밖에서 들어온 커맨드의 `kind` 를 런타임에
+ * 검사해야 하기 때문이다**(F-3 · K-4). 타입만 있으면 컴파일 뒤에 아무것도 남지 않는다.
+ *
+ * `mesh` 는 생성·임포트로 들어온 메시로, 지오메트리는 에셋으로 따로 보관한다.
+ */
+export const NODE_KINDS = [
+  'group',
+  'box',
+  'sphere',
+  'cylinder',
+  'plane',
+  'directionalLight',
+  'pointLight',
+  'mesh',
+] as const
+
+export type NodeKind = (typeof NODE_KINDS)[number]
 
 export interface SceneNode {
   id: NodeId

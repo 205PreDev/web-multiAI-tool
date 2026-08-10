@@ -32,15 +32,21 @@ export function createNode(
   name: string,
   overrides: Partial<Pick<SceneNode, 'transform' | 'material'>> = {},
 ): SceneNode {
-  return {
+  const node: SceneNode = {
     id: newNodeId(),
     name,
     kind,
     transform: overrides.transform ?? IDENTITY_TRANSFORM,
-    material: MATERIAL_LESS.has(kind) ? undefined : (overrides.material ?? DEFAULT_MATERIAL),
     parentId: null,
     childIds: [],
   }
+
+  // 머티리얼이 없는 종류에는 **키 자체를 두지 않는다.** `material: undefined` 로 두면
+  // `JSON.stringify` 가 키를 지워, 왕복 전후의 객체가 값은 같은데 모양이 달라진다.
+  // 그 차이를 `toEqual` 이 못 보므로 완료 판정 단언이 통과하면서 비대칭이 남는다.
+  if (MATERIAL_LESS.has(kind)) return node
+
+  return { ...node, material: overrides.material ?? DEFAULT_MATERIAL }
 }
 
 export function addNode(

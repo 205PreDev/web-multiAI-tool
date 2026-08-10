@@ -49,13 +49,24 @@ export function collectSubtreeIds(state: SceneState, rootId: NodeId): NodeId[] {
   return collected
 }
 
-/** 노드 하나를 지정한 부모의 지정한 위치에 넣는다. 자손은 다루지 않는다. */
+/**
+ * 노드 하나를 지정한 부모의 지정한 위치에 넣는다. 자손은 다루지 않는다.
+ *
+ * **이미 있는 id 는 거절한다.** 덮어쓰면 `nodes` 는 하나인데 형제 목록에는 같은 id 가 둘
+ * 들어가고, 그 상태에서 삭제하면 둘 다 사라지는데 되돌리기 payload 에는 자리가 하나만 적혀
+ * 있어 원래 목록을 복원하지 못한다. UI 는 `crypto.randomUUID()` 를 쓰므로 여기 걸릴 일이
+ * 없지만, 조수(F-3)와 협업 수신(K-4)은 id 를 직접 실어 보낸다.
+ */
 export function attachNode(
   state: SceneState,
   node: SceneNode,
   parentId: NodeId | null,
   index: number,
 ): SceneState {
+  if (Object.hasOwn(state.nodes, node.id)) {
+    throw new Error(`이미 씬에 있는 노드 id 입니다: ${node.id}`)
+  }
+
   const placed: SceneNode = { ...node, parentId }
   const withNode: SceneState = { ...state, nodes: { ...state.nodes, [node.id]: placed } }
   const siblings = siblingsOf(withNode, parentId)
@@ -77,6 +88,20 @@ export function detachSubtree(state: SceneState, rootId: NodeId): SceneState {
   const siblings = siblingsOf(state, node.parentId).filter((id) => id !== rootId)
 
   return withSiblings(detached, node.parentId, siblings)
+}
+
+/**
+ * 뿌리 노드 하나만 떼어낸다. **자손은 `nodes` 에 그대로 남으므로 곧바로 다시 붙여야 한다** —
+ * 계층 이동에서만 쓰는 중간 단계이며 이 상태가 스토어까지 나가면 부모 없는 노드가 남는다.
+ */
+export function detachNodeOnly(state: SceneState, nodeId: NodeId): SceneState {
+  const node = getNode(state, nodeId)
+
+  const nodes = { ...state.nodes }
+  delete nodes[nodeId]
+
+  const siblings = siblingsOf(state, node.parentId).filter((id) => id !== nodeId)
+  return withSiblings({ ...state, nodes }, node.parentId, siblings)
 }
 
 /** 형제 목록에서의 위치. 없으면 -1. */
