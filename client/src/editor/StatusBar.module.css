@@ -44,6 +44,11 @@
   font-weight: 600;
 }
 
+.danger {
+  color: var(--c-status-danger);
+  font-weight: 600;
+}
+
 .pending {
   color: var(--c-text-muted);
   font-weight: 600;

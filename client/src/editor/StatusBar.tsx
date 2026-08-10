@@ -1,7 +1,7 @@
 import { useRendererReport, type RendererReport } from './viewport/rendererReport'
 import styles from './StatusBar.module.css'
 
-type Tone = 'ok' | 'warn'
+type Tone = 'ok' | 'warn' | 'danger'
 
 interface RendererDescription {
   label: string
@@ -10,6 +10,14 @@ interface RendererDescription {
 }
 
 function describeRenderer(report: RendererReport): RendererDescription {
+  if (report.status === 'failed') {
+    return {
+      label: '없음',
+      detail: `렌더러를 만들지 못했습니다 — ${report.message}`,
+      tone: 'danger',
+    }
+  }
+
   if (report.backend === 'webgpu') {
     return { label: 'WebGPU', detail: '이 브라우저가 WebGPU를 지원합니다', tone: 'ok' }
   }
@@ -38,6 +46,12 @@ function describeRenderer(report: RendererReport): RendererDescription {
   }
 }
 
+const toneClass: Record<Tone, string> = {
+  ok: styles.ok ?? '',
+  warn: styles.warn ?? '',
+  danger: styles.danger ?? '',
+}
+
 export function StatusBar() {
   const report = useRendererReport((s) => s.report)
   const renderer = report ? describeRenderer(report) : null
@@ -50,9 +64,7 @@ export function StatusBar() {
         렌더러{' '}
         {renderer ? (
           <>
-            <strong className={renderer.tone === 'ok' ? styles.ok : styles.warn}>
-              {renderer.label}
-            </strong>
+            <strong className={toneClass[renderer.tone]}>{renderer.label}</strong>
             <span className={styles.detail}>{renderer.detail}</span>
           </>
         ) : (

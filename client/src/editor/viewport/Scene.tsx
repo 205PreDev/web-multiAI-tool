@@ -20,7 +20,9 @@ export function Scene() {
         <shadowMaterial opacity={0.28} />
       </mesh>
 
+      {/* 그림자 받이 평면과 같은 y=0 에 두면 두 면이 z-파이팅해 격자가 깜빡인다 */}
       <Grid
+        position={[0, 0.002, 0]}
         args={[40, 40]}
         cellSize={0.5}
         cellThickness={0.6}
