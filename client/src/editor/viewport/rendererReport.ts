@@ -11,7 +11,8 @@ export type RendererRequest =
   /** navigator.gpu 를 잠시 감춰 폴백 경로 자체를 태운다. 검증용 */
   | 'simulate-no-webgpu'
 
-export interface RendererReport {
+interface RendererReady {
+  status: 'ready'
   request: RendererRequest
   backend: RendererBackend
   /**
@@ -25,6 +26,18 @@ export interface RendererReport {
   /** 브라우저가 WebGPU를 노출하는가. 어댑터 획득 실패는 여기서 알 수 없다. */
   webgpuExposed: boolean
 }
+
+interface RendererFailed {
+  status: 'failed'
+  request: RendererRequest
+  message: string
+}
+
+/**
+ * 실패를 상태로 들고 있는 이유 — WebGPU와 WebGL2가 **둘 다** 실패하면 화면은 그냥
+ * 비어 있고, 이 모듈이 존재하는 이유인 "무엇이 돌고 있는가"를 아무도 답하지 못한다.
+ */
+export type RendererReport = RendererReady | RendererFailed
 
 interface RendererReportStore {
   report: RendererReport | null
