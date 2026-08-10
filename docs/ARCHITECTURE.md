@@ -32,7 +32,7 @@ client/
     generate/        생성 패널, 잡 카드
     assistant/       조수 채팅
     sync/            IndexedDB 영속 + 서버 동기화 큐
-  public/            공개 화면 (로그인 불필요, 뷰어 전용 경량 번들)
+  site/              공개 화면 (로그인 불필요, 뷰어 전용 경량 번들)
     gallery/         갤러리
     viewer/          공유 뷰어 — WMT 스키마의 세 번째 소비자
   api/               서버 호출 단일 진입 파일
@@ -62,7 +62,9 @@ fixtures/demo/       데모 레일 픽스처
 
 1. **클라이언트→서버 호출은 `client/api/` 한 곳만 지납니다.** 컴포넌트에 `fetch`를 흩뿌리지 않습니다.
 2. **외부 생성 API 호출은 `server/adapters/registry.ts` 등록 항목만 통과합니다.** CI가 우회를 막습니다(`CLAUDE.md`).
-3. **`client/public/`은 에디터 코드를 import하지 않습니다.** 공유받은 사람이 에디터 번들 전체를 내려받는 구조를 빌드 단계에서 막습니다. 두 번들이 공유하는 것은 `shared/types/`와 WMT 파서, three.js 로더, 그리고 `client/ui/` 디자인 시스템 컴포넌트뿐입니다. `client/ui/`는 역으로 `editor/`·`public/` 어느 쪽도 import하지 않습니다 — 의존은 항상 한 방향입니다.
+3. **`client/src/site/`는 에디터 코드를 import하지 않습니다.** 공유받은 사람이 에디터 번들 전체를 내려받는 구조를 빌드 단계에서 막습니다. 두 번들이 공유하는 것은 `shared/types/`와 WMT 파서, three.js 로더, 그리고 `client/src/ui/` 디자인 시스템 컴포넌트뿐입니다. `ui/`는 역으로 `editor/`·`site/` 어느 쪽도 import하지 않습니다 — 의존은 항상 한 방향입니다.
+
+> **폴더 이름 주의.** 공개 화면을 `public/`이 아니라 `site/`로 둔 것은 **Vite가 `client/public/`을 정적 에셋 폴더로 예약**하기 때문입니다. 같은 이름이 두 뜻으로 존재하는 것을 피했습니다(0단계에서 확인).
 
 ---
 
