@@ -36,6 +36,7 @@ client/
     gallery/         갤러리
     viewer/          공유 뷰어 — WMT 스키마의 세 번째 소비자
   api/               서버 호출 단일 진입 파일
+  ui/                디자인 시스템 — 토큰 3층 + 공유 컴포넌트 (editor·public 공용, N-14)
   export/            glTF 익스포터, wmt extras, 좌표·단위 변환
 
 server/  (Spring Boot)
@@ -61,7 +62,7 @@ fixtures/demo/       데모 레일 픽스처
 
 1. **클라이언트→서버 호출은 `client/api/` 한 곳만 지납니다.** 컴포넌트에 `fetch`를 흩뿌리지 않습니다.
 2. **외부 생성 API 호출은 `server/adapters/registry.ts` 등록 항목만 통과합니다.** CI가 우회를 막습니다(`CLAUDE.md`).
-3. **`client/public/`은 에디터 코드를 import하지 않습니다.** 공유받은 사람이 에디터 번들 전체를 내려받는 구조를 빌드 단계에서 막습니다. 두 번들이 공유하는 것은 `shared/types/`와 WMT 파서, three.js 로더뿐입니다.
+3. **`client/public/`은 에디터 코드를 import하지 않습니다.** 공유받은 사람이 에디터 번들 전체를 내려받는 구조를 빌드 단계에서 막습니다. 두 번들이 공유하는 것은 `shared/types/`와 WMT 파서, three.js 로더, 그리고 `client/ui/` 디자인 시스템 컴포넌트뿐입니다. `client/ui/`는 역으로 `editor/`·`public/` 어느 쪽도 import하지 않습니다 — 의존은 항상 한 방향입니다.
 
 ---
 
@@ -336,3 +337,4 @@ DB와 스토리지는 이미 외부에 있으므로 움직일 것이 없습니�
 | 4 | Cloudflare R2(또는 대안) 프리 티어·이그레스 정책 | 8절 |
 | 5 | Render/Fly.io 요금과 슬립 정책 — 슬립되면 잡 폴링이 죽으므로 중요 | 9절 |
 | 6 | Google·GitHub OAuth 앱 등록 시 검수 요건 | 2절 |
+| 7 | **Tripo 오토리깅·텍스처 생성이 자사 생성물이 아닌 외부 업로드 메시를 받는지** — 수동·임포트 입구(A-11, G-6)가 파이프라인을 끝까지 탈 수 있는지가 여기 걸립니다 | REQUIREMENTS 4절 서두·C절 |
