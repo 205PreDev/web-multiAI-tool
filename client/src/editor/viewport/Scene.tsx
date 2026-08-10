@@ -1,6 +1,7 @@
 import { GizmoHelper, OrbitControls } from '@react-three/drei'
 import { AxisGizmo } from './AxisGizmo'
 import { SceneDiagnostics } from './SceneDiagnostics'
+import { SceneNodes } from './SceneNodes'
 
 /**
  * 0단계의 빈 씬. 렌더러가 실제로 그리는지 확인할 최소 구성만 둔다.
@@ -29,10 +30,7 @@ export function Scene() {
         shadow-normalBias={0.02}
       />
 
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="#e07a5f" roughness={0.45} metalness={0.05} />
-      </mesh>
+      <SceneNodes />
 
       {/* 그림자만 받는 바닥. 면 자체는 보이지 않는다. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>

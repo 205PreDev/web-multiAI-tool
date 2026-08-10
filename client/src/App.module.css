@@ -6,3 +6,10 @@
   background-color: var(--c-surface-base);
   color: var(--c-text-primary);
 }
+
+.stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
