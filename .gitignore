@@ -9,8 +9,14 @@
 # 의존성 / 빌드 산출물
 node_modules/
 dist/
+dist-ssr/
 build/
 .vite/
+*.tsbuildinfo
+
+# 서버 빌드 산출물
+target/
+.gradle/
 
 # 에디터 / OS
 .vscode/

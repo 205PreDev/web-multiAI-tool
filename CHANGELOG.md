@@ -9,6 +9,31 @@
 
 ---
 
+## 2026-08-10 (7차 — 0단계 스캐폴딩)
+
+설계를 마치고 첫 코드를 올렸습니다. Vite + React 19 + TypeScript에 three.js/R3F를 얹고 빈 씬이 브라우저에 뜨는 것까지입니다.
+
+- ➕ npm 워크스페이스 루트 + `client/` — React 19.2 / Vite 8 / TS 6 / three 0.185 / R3F 9.7
+- ➕ 폴더 구조 — `client/{editor,site,ui,api,export}` · `shared/{postprocess,types}` · `server/` · `unity/` · `fixtures/demo/`
+- ➕ 렌더러 — WebGPU 우선, WebGL2 폴백. **어느 백엔드가 실제로 선택됐는지 상태 바에 표시**
+- ➕ 디자인 토큰 3층 골격(N-14) — 첫 UI부터 리터럴 색 없이 갔습니다
+- ✏️ `CLAUDE.md` 실행 절 — "미정"을 실제 명령으로. `npm run verify` 한 줄이 1차 도구 검증
+- ✏️ `docs/ARCHITECTURE.md` 1절 — 공개 화면 폴더를 `public/`에서 `site/`로
+
+**지시서와 어긋난 것 두 가지를 남깁니다.**
+
+⚠️ **린터가 ESLint가 아니라 oxlint입니다.** 현재 Vite react-ts 템플릿의 기본값이 바뀌었습니다. 둘을 함께 두면 규칙이 갈라지고 느려지기만 하므로 템플릿 기본값을 따랐습니다. **N-14의 "리터럴 색 금지"는 CSS 규칙이라 애초에 ESLint가 아니라 stylelint의 일**이고, 그것은 토큰이 자리를 잡는 1단계에 붙입니다.
+
+⚠️ **공개 화면 폴더가 `public/`이 될 수 없었습니다.** Vite가 `client/public/`을 정적 에셋 폴더로 예약합니다. 같은 이름이 두 뜻으로 존재하면 읽는 사람이 매번 헷갈리므로 `client/src/site/`로 옮기고 `docs/ARCHITECTURE.md`를 고쳤습니다.
+
+**설계 판단 하나** — 폴백을 조용히 두지 않았습니다. three.js는 WebGPU가 없으면 알아서 WebGL2로 내려가는데, 그대로 두면 **나중에 "왜 느리지"의 원인을 짚을 수 없습니다.** 그래서 init 이후 실제 백엔드를 읽어 상태 바에 표시하고, 검증용 URL 질의를 두 개 두었습니다 — `?renderer=webgl2`(백엔드 직접 지정)와 `?renderer=nogpu`(`navigator.gpu`를 감춰 **폴백 경로 자체를 태움**). N-1이 요구하는 "폴백이 실제로 실행되는 환경"의 확인은 뒤쪽입니다. 앞의 것으로 대신하면 다른 코드 경로를 검증한 셈이 됩니다.
+
+⚠️ **번들이 1.66MB(gzip 460KB)입니다.** three.js WebGPU 빌드와 drei가 대부분이며 에디터로서는 정상 범위지만, **J-3 공유 뷰어는 이 번들을 내려받으면 안 됩니다.** 9단계에서 번들 분리가 실제로 갈라지는지 수치로 확인해야 합니다.
+
+⚠️ **프로젝트 폴더명이 아직 `web-multi-tool`입니다.** `web-multiAI-tool`로의 변경은 세션 밖 수동 작업으로 남아 있습니다.
+
+---
+
 ## 2026-08-10 (6차 — ElevenAPI 탭 확인, ElevenLabs 항목 종결)
 
 사용자가 ElevenAPI 탭을 확인해 넘겨줬습니다. **API는 별도 요금제가 아니라 Creative 구독의 크레딧을 공용**하거나 종량제를 고르는 구조이고, 계산기가 API 사용 기준으로 Creator($11/월)를 추천합니다. 탭의 단가 카드는 TTS·STT 모델(우리 미사용)이며 효과음은 구독 크레딧 차감 그대로입니다.

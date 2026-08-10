@@ -1,0 +1,11 @@
+.viewport {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background-color: var(--c-surface-sunken);
+}
+
+.viewport canvas {
+  display: block;
+  outline: none;
+}

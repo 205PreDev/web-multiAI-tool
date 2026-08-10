@@ -13,7 +13,7 @@
 
 | | |
 | --- | --- |
-| 진행 중인 단계 | 0단계 준비 |
+| 진행 중인 단계 | 1단계 에디터 골격 |
 | 다음 작업 | `WORK_ORDER.md` 참조 |
 | 마지막 갱신 | 2026-08-10 |
 
@@ -22,10 +22,10 @@
 ## 0단계 — 준비
 
 - [ ] 프로젝트 폴더명을 `web-multiAI-tool`로 변경 — 사용자가 세션 밖에서 수동 처리
-- [ ] Vite + React 19 + TypeScript로 프로젝트를 초기화
-- [ ] 개발 환경 정리 — ESLint / Prettier / 경로 별칭 / 폴더 구조
-- [ ] three.js / R3F / drei / leva / Zustand를 설치하고 빈 씬이 렌더되는 것까지 확인
-- [ ] WebGPURenderer를 적용하고 WebGL2 폴백이 실제로 동작하는지 확인 (N-1)
+- [x] Vite + React 19 + TypeScript로 프로젝트를 초기화
+- [x] 개발 환경 정리 — 린트 / Prettier / 경로 별칭 / 폴더 구조 — 린터는 ESLint가 아니라 **oxlint**(템플릿 기본값), 경위는 `CHANGELOG.md`
+- [x] three.js / R3F / drei / leva / Zustand를 설치하고 빈 씬이 렌더되는 것까지 확인
+- [x] WebGPURenderer를 적용하고 WebGL2 폴백이 실제로 동작하는지 확인 (N-1) — 3차 사용자 검증 대기
 
 ## 1단계 — 에디터 골격
 

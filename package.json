@@ -1,0 +1,26 @@
+{
+  "name": "web-multiai-tool",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "웹 브라우저에서 텍스트와 이미지로부터 게임 엔진에 바로 넣을 수 있는 3D 에셋을 만드는 멀티모달 AI 에디터",
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace client",
+    "build": "npm run build --workspace client",
+    "preview": "npm run preview --workspace client",
+    "typecheck": "npm run typecheck --workspace client",
+    "lint": "npm run lint --workspace client",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run build"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.2"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
