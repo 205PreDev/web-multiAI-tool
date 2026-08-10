@@ -1,0 +1,101 @@
+/*
+ * 디자인 토큰 — N-14
+ *
+ * 3층으로 나눈다. primitive 는 의미가 없는 값이고, semantic 은 역할이며,
+ * component 는 개별 컴포넌트가 필요할 때만 만든다.
+ *
+ * 컴포넌트는 semantic 만 참조한다. primitive 를 직접 쓰면 테마 교체가 깨진다.
+ * 테마는 semantic 값 교체로만 갈라진다 — 컴포넌트 코드에 테마 분기가 나타나면 설계 위반이다.
+ */
+
+:root {
+  /* ── primitive · 색 ────────────────────────────── */
+  --p-gray-950: #0b0d10;
+  --p-gray-900: #12151a;
+  --p-gray-850: #171b21;
+  --p-gray-800: #1d222a;
+  --p-gray-700: #2a313c;
+  --p-gray-600: #3d4552;
+  --p-gray-400: #7b8595;
+  --p-gray-300: #a3acba;
+  --p-gray-100: #e4e8ee;
+  --p-white: #ffffff;
+
+  --p-blue-500: #3b82f6;
+  --p-blue-400: #60a5fa;
+  --p-amber-500: #f59e0b;
+  --p-red-500: #ef4444;
+  --p-green-500: #22c55e;
+
+  /* ── primitive · 간격 ──────────────────────────── */
+  --p-space-1: 4px;
+  --p-space-2: 8px;
+  --p-space-3: 12px;
+  --p-space-4: 16px;
+  --p-space-6: 24px;
+
+  /* ── primitive · 타이포 ────────────────────────── */
+  --p-font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI',
+    'Malgun Gothic', sans-serif;
+  --p-font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'D2Coding', monospace;
+  --p-text-xs: 11px;
+  --p-text-sm: 13px;
+  --p-text-md: 14px;
+
+  /* ── primitive · 그 외 ─────────────────────────── */
+  --p-radius-sm: 4px;
+  --p-radius-md: 6px;
+  --p-border-width: 1px;
+}
+
+/* ── semantic ─────────────────────────────────────
+ * 컴포넌트가 참조하는 유일한 층. 이름은 "무슨 색인가"가 아니라 "무슨 역할인가"로 짓는다.
+ */
+
+:root,
+[data-theme='dark'] {
+  --c-surface-base: var(--p-gray-950);
+  --c-surface-raised: var(--p-gray-900);
+  --c-surface-overlay: var(--p-gray-850);
+  --c-surface-sunken: var(--p-gray-900);
+
+  --c-border-subtle: var(--p-gray-800);
+  --c-border-strong: var(--p-gray-700);
+
+  --c-text-primary: var(--p-gray-100);
+  --c-text-secondary: var(--p-gray-300);
+  --c-text-muted: var(--p-gray-400);
+
+  --c-accent: var(--p-blue-400);
+  --c-accent-contrast: var(--p-gray-950);
+
+  --c-status-ok: var(--p-green-500);
+  --c-status-warn: var(--p-amber-500);
+  --c-status-danger: var(--p-red-500);
+
+  --c-focus-ring: var(--p-blue-400);
+}
+
+[data-theme='light'] {
+  --c-surface-base: var(--p-white);
+  --c-surface-raised: var(--p-gray-100);
+  --c-surface-overlay: var(--p-white);
+  --c-surface-sunken: var(--p-gray-100);
+
+  --c-border-subtle: var(--p-gray-300);
+  --c-border-strong: var(--p-gray-400);
+
+  --c-text-primary: var(--p-gray-950);
+  --c-text-secondary: var(--p-gray-700);
+  --c-text-muted: var(--p-gray-600);
+
+  --c-accent: var(--p-blue-500);
+  --c-accent-contrast: var(--p-white);
+
+  --c-status-ok: var(--p-green-500);
+  --c-status-warn: var(--p-amber-500);
+  --c-status-danger: var(--p-red-500);
+
+  --c-focus-ring: var(--p-blue-500);
+}

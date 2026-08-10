@@ -1,0 +1,12 @@
+# 산출물
+dist/
+build/
+node_modules/
+.vite/
+
+# 문서는 손으로 쓴 줄바꿈을 유지한다 — 포매터가 문단을 재배치하면 diff가 통째로 뒤집힌다
+docs/
+*.md
+
+# 바이너리 픽스처
+fixtures/

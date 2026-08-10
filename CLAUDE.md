@@ -259,8 +259,38 @@ undo/redo · 씬 직렬화 · 다중 선택 · 카메라 조작은 데모에 보
 
 ---
 
-## 실행 (스캐폴딩 후 갱신)
+## 실행
+
+npm 워크스페이스이므로 **모든 명령은 저장소 루트에서** 돈다. `client/`로 내려가지 않는다.
 
 ```bash
-# 미정 — 프로젝트 초기화 시 작성
+npm install          # 최초 1회
+npm run dev          # 개발 서버 — http://localhost:3000
+npm run build        # 타입 검사 + 프로덕션 빌드
+npm run preview      # 빌드 결과 확인
+
+npm run typecheck    # tsc -b
+npm run lint         # oxlint
+npm run format       # prettier --write
+npm run verify       # typecheck + lint + format:check + build — 1차 도구 검증 한 줄
 ```
+
+**1차 도구 검증은 `npm run verify` 하나로 돈다.** 여기에 3단계부터 `npm run demo:rail`이 더해진다.
+
+### 렌더러 검증 (N-1)
+
+WebGPU가 있으면 WebGPU를, 없으면 WebGL2를 쓴다. **어느 쪽이 실제로 선택됐는지는 화면 하단 상태 바에 표시된다.**
+
+```
+http://localhost:3000/                      기본 — WebGPU 시도, 실패 시 폴백
+http://localhost:3000/?renderer=webgl2      WebGL2 백엔드를 직접 지정
+http://localhost:3000/?renderer=nogpu       navigator.gpu 를 감춰 폴백 경로를 태움
+```
+
+**뒤의 둘은 서로 다른 경로다.** `webgl2`는 처음부터 WebGL2 백엔드를 만들고, `nogpu`는 three.js의 `getFallback`을 실제로 태운다. N-1이 요구하는 "폴백이 실제로 실행되는 것"의 확인은 `nogpu` 쪽이다.
+
+**폴백해도 NodeMaterial 파이프라인은 그대로다.** 백엔드가 WebGL2로 내려가는 것이지 고전 `WebGLRenderer`가 되는 것이 아니므로, raw `ShaderMaterial`을 쓰는 라이브러리 컴포넌트는 어느 모드에서도 동작하지 않는다. 도입 전 확인 절차와 호환 표는 `client/src/editor/viewport/README.md`에 있고, 렌더러를 유지하기로 한 근거와 되돌리는 기준은 `docs/DECISIONS.md` D-21이다.
+
+### 아직 없는 것
+
+`server/`(2단계) · `shared/postprocess/`(4단계) · `unity/`(8단계)는 README만 있다. 각 README에 그 폴더가 지는 제약이 적혀 있으므로 처음 손대기 전에 읽는다.
