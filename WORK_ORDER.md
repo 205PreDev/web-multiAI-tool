@@ -19,13 +19,14 @@
 
 ### 선행 확인
 
-작업을 시작하기 전에 프로젝트 폴더명이 `web-multiAI-tool`로 바뀌었는지 확인합니다. 아직 `web-multi-tool`이라면 사용자에게 알리고, 폴더명과 무관한 작업이므로 그대로 진행합니다.
+- 작업을 시작하기 전에 프로젝트 폴더명이 `web-multiAI-tool`로 바뀌었는지 확인합니다. 아직 `web-multi-tool`이라면 사용자에게 알리고, 폴더명과 무관한 작업이므로 그대로 진행합니다.
+- **2026-08-10에 설계가 v2로 개정됐습니다** — `docs/ARCHITECTURE.md`(구조 정본)와 `docs/UX.md`(화면 정본)가 신설됐고, 폴더 구조에 `client/public/`(공개 화면) 분리가 더해졌습니다. 이 작업지시서의 범위 자체는 변하지 않았습니다.
 
 ### 하는 것
 
 1. Vite로 React 19 + TypeScript 템플릿을 생성합니다. 프로젝트 루트에 이미 `docs`와 `.local`, `CLAUDE.md`가 있으므로 **기존 파일을 덮어쓰지 않도록** 주의합니다.
 2. ESLint와 Prettier를 설정하고 경로 별칭을 잡습니다.
-3. 폴더 구조를 `docs/REQUIREMENTS.md` 8.1절대로 잡습니다. `client/`와 `server/`, `shared/`, `unity/`, `fixtures/demo/`입니다. **`shared/postprocess/`는 런타임 중립 제약이 걸린 곳이므로 이번 단계에서는 빈 폴더와 README만 둡니다.**
+3. 폴더 구조를 `docs/ARCHITECTURE.md` 1절대로 잡습니다. `client/`(editor·public 분리)와 `server/`, `shared/`, `unity/`, `fixtures/demo/`입니다. **`shared/postprocess/`는 런타임 중립 제약이 걸린 곳이므로 이번 단계에서는 빈 폴더와 README만 둡니다.**
 4. three.js와 `@react-three/fiber`, `drei`, `leva`, `zustand`를 설치합니다.
 5. 빈 씬을 띄웁니다. 그리드와 궤도 카메라, 큐브 하나면 충분합니다.
 6. `WebGPURenderer`를 적용하고 **WebGL2로 폴백되는 경로가 실제로 동작하는지** 확인합니다.
