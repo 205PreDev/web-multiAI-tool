@@ -36,8 +36,9 @@ function blockFileNavigation(event: DragEvent<HTMLDivElement>) {
 }
 
 export function EditorLayout() {
-  // 테마는 index.html 의 <html data-theme> 하나가 정한다. 여기서 다시 박으면
-  // 그 값을 가려 [data-theme='light'] 가 앱 안쪽에 영영 닿지 못한다.
+  // 테마는 <html data-theme> 하나가 정한다 — 기본값은 index.html, 검증용 덮어쓰기는
+  // main.tsx 의 `applyThemeFromUrl`. 컴포넌트에서 다시 박으면 그 값을 가려
+  // [data-theme='light'] 가 앱 안쪽에 영영 닿지 못한다.
   useEditorShortcuts()
 
   return (

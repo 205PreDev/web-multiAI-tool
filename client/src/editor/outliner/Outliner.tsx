@@ -32,6 +32,8 @@ interface Row {
 
 const INDENT_PX = 12
 
+const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
+
 /** 접힌 노드의 자손은 화면에 없으므로 행도 만들지 않는다 */
 function flatten(scene: SceneState, collapsed: ReadonlySet<NodeId>): Row[] {
   const rows: Row[] = []
@@ -343,13 +345,17 @@ export function Outliner() {
                           setRenamingId(row.id)
                           return
                         }
-                        if (!event.altKey) return
+                        if (!event.altKey || !ARROW_KEYS.has(event.key)) return
+
+                        // **더 옮길 수 없더라도 먼저 막는다.** Alt+←/→ 는 브라우저의 뒤로·앞으로
+                        // 가기다. 옮길 자리가 없다고 그냥 두면 아웃라이너에서 방향키를 누른 것이
+                        // 페이지 이탈이 되고, 씬이 메모리에만 있으므로(A-6 미구현) 작업이 통째로
+                        // 사라진다. 맨 위 노드에서 Alt+← 를 누르는 것은 드문 일이 아니다.
+                        event.preventDefault()
 
                         const placement = keyboardPlacement(row, event.key)
                         if (!placement) return
 
-                        // 브라우저의 캐럿 이동·뒤로 가기를 막는다
-                        event.preventDefault()
                         run(reparentNode(scene, row.id, placement.parentId, placement.index))
                       }}
                     >
