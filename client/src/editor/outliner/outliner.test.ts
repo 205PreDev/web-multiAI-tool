@@ -9,9 +9,10 @@ import {
   parseCommand,
 } from '../commands'
 import { applyCommand, revertCommand } from '../commands/history'
-import { EMPTY_SCENE, type NodeId, type SceneState } from '../scene/types'
+import { EMPTY_SCENE, type NodeId, type NodeKind, type SceneState } from '../scene/types'
 import { buildAddCommand, nextNodeName } from './addSpec'
 import { checkDrop, resolveDrop } from './dropTarget'
+import { DIRECTION_BY_KEY, planKeyboardMove } from './keyboardMove'
 import type { Command } from '../commands'
 
 /**
@@ -22,7 +23,7 @@ import type { Command } from '../commands'
  * 화면이 아니라 **되돌리기**에서 나타나므로, 눈으로 보는 검증(3차)으로는 잡히지 않는다.
  */
 
-function add(state: SceneState, kind: 'group' | 'box', name: string, parentId: NodeId | null) {
+function add(state: SceneState, kind: NodeKind, name: string, parentId: NodeId | null) {
   const node = createNode(kind, name, {})
   const command = addNode(state, node, parentId)
   return { state: applyCommand(state, command), id: node.id, command }
@@ -134,6 +135,82 @@ describe('드롭 판정 — 자리', () => {
 
     // 끝에 붙이는 것은 유효하다 — 위의 단언이 정상 경로까지 막고 있으면 안 된다
     expect(() => applyCommand(scene, reparentNode(scene, box3, groupId, 2))).not.toThrow()
+  })
+})
+
+describe('키보드 계층 이동 (Alt + 방향키)', () => {
+  /** 사용자가 실제로 만든 모양 — 박스 밑에 구, 구 밑에 원기둥. 형제가 하나도 없다 */
+  function chain() {
+    const a = add(EMPTY_SCENE, 'box', '박스 1', null)
+    const b = add(a.state, 'sphere', '구 1', a.id)
+    const c = add(b.state, 'cylinder', '원기둥 1', b.id)
+    return { scene: c.state, box: a.id, sphere: b.id, cylinder: c.id }
+  }
+
+  it('한 줄로 이어진 계층에서는 대부분 옮길 곳이 없다 — 그리고 이유를 말한다', () => {
+    // **이것이 조용하면 사용자에게는 고장과 구분되지 않는다.** 네 방향 중 셋이 할 일이
+    // 없는 모양이 드물지 않다 — 자식을 하나씩 달아 내려가면 바로 이 모양이 된다
+    const { scene, cylinder } = chain()
+
+    for (const direction of ['up', 'down', 'in'] as const) {
+      const plan = planKeyboardMove(scene, cylinder, direction)
+      expect(plan.ok, direction).toBe(false)
+      expect(plan.ok === false && plan.reason.length > 0, direction).toBe(true)
+    }
+  })
+
+  it('한 단 나오기는 동작한다 — 그리고 되돌려진다', () => {
+    const { scene, box, sphere, cylinder } = chain()
+    const plan = planKeyboardMove(scene, cylinder, 'out')
+    if (!plan.ok) throw new Error(plan.reason)
+
+    const command = reparentNode(scene, cylinder, plan.parentId, plan.index)
+    const moved = applyCommand(scene, command)
+
+    expect(moved.nodes[box]?.childIds).toStrictEqual([sphere, cylinder])
+    expect(moved.nodes[sphere]?.childIds).toStrictEqual([])
+    expect(revertCommand(moved, command)).toStrictEqual(scene)
+  })
+
+  it('최상위에서 더 나갈 수 없다', () => {
+    const { scene, box } = chain()
+    expect(planKeyboardMove(scene, box, 'out').ok).toBe(false)
+  })
+
+  it('형제가 있으면 위아래로 옮겨지고 자리가 맞는다', () => {
+    const { scene, groupId, box1, box2 } = fixture()
+
+    const down = planKeyboardMove(scene, box1, 'down')
+    if (!down.ok) throw new Error(down.reason)
+    const moved = applyCommand(scene, reparentNode(scene, box1, down.parentId, down.index))
+    expect(moved.nodes[groupId]?.childIds).toStrictEqual([box2, box1])
+
+    const up = planKeyboardMove(moved, box1, 'up')
+    if (!up.ok) throw new Error(up.reason)
+    const back = applyCommand(moved, reparentNode(moved, box1, up.parentId, up.index))
+    expect(back.nodes[groupId]?.childIds).toStrictEqual([box1, box2])
+  })
+
+  it('안으로 넣기는 바로 위 형제의 마지막 자식이 된다', () => {
+    const { scene, groupId, box2, box3 } = fixture()
+
+    // box3 는 루트의 두 번째이고 바로 위 형제는 그룹이다
+    const plan = planKeyboardMove(scene, box3, 'in')
+    if (!plan.ok) throw new Error(plan.reason)
+
+    const moved = applyCommand(scene, reparentNode(scene, box3, plan.parentId, plan.index))
+    expect(moved.nodes[groupId]?.childIds.at(-1)).toBe(box3)
+    expect(moved.nodes[groupId]?.childIds).toContain(box2)
+    expect(moved.rootIds).toStrictEqual([groupId])
+  })
+
+  it('방향키 이름이 방향으로 이어져 있다', () => {
+    // 이름이 어긋나면 단축키가 조용히 다른 일을 한다
+    expect(DIRECTION_BY_KEY['ArrowUp']).toBe('up')
+    expect(DIRECTION_BY_KEY['ArrowDown']).toBe('down')
+    expect(DIRECTION_BY_KEY['ArrowLeft']).toBe('out')
+    expect(DIRECTION_BY_KEY['ArrowRight']).toBe('in')
+    expect(DIRECTION_BY_KEY['Enter']).toBeUndefined()
   })
 })
 

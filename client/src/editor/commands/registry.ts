@@ -136,7 +136,9 @@ export const COMMANDS: { [T in CommandType]: CommandDefinition<T> } = {
   reparentNode: {
     apply: (state, { nodeId, to }) => moveNode(state, nodeId, to.parentId, to.index),
     revert: (state, { nodeId, from }) => moveNode(state, nodeId, from.parentId, from.index),
-    describe: () => '계층 이동',
+    // 같은 부모 안에서 자리만 바뀐 것과 부모가 바뀐 것은 사용자에게 다른 일이다.
+    // 둘을 "계층 이동" 하나로 묶으면 토스트를 보고도 무엇이 일어났는지 알 수 없다
+    describe: ({ from, to }) => (from.parentId === to.parentId ? '순서 변경' : '계층 이동'),
     targetNodeId: ({ nodeId }) => nodeId,
   },
 }

@@ -4,7 +4,7 @@ import { Panel } from '../../ui/Panel'
 import { toast } from '../../ui/toast'
 import { removeNode, renameNode, reparentNode } from '../commands'
 import { KIND_INFO } from '../scene/kindInfo'
-import { findNode, indexOfNode } from '../scene/mutations'
+import { findNode } from '../scene/mutations'
 import { useEditorStore } from '../scene/store'
 import { useCommandRunner } from '../useCommandRunner'
 import { AddMenu } from './AddMenu'
@@ -31,8 +31,6 @@ interface Row {
 }
 
 const INDENT_PX = 12
-
-const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])
 
 /** 접힌 노드의 자손은 화면에 없으므로 행도 만들지 않는다 */
 function flatten(scene: SceneState, collapsed: ReadonlySet<NodeId>): Row[] {
@@ -182,49 +180,6 @@ export function Outliner() {
     endDrag()
   }
 
-  /**
-   * 키보드로 계층을 옮긴다 (Alt + 방향키).
-   *
-   * **드래그가 유일한 경로면 마우스를 쓸 수 없는 사용자에게 계층 이동이 없는 것과 같다.**
-   * `docs/UX.md` 6절이 "전체 키보드 도달"을 접근성 기준선으로 잡았고, 아웃라이너의 나머지
-   * 조작(선택·이름 변경·삭제)은 이미 키보드로 닿는다.
-   *
-   * 자리 계산의 기준은 드롭과 같다 — **떼어낸 뒤의 형제 목록**이다.
-   */
-  function keyboardPlacement(
-    row: Row,
-    key: string,
-  ): { parentId: NodeId | null; index: number } | null {
-    const siblings =
-      row.parentId === null ? scene.rootIds : (findNode(scene, row.parentId)?.childIds ?? [])
-
-    // 위/아래 — 형제 사이에서 자리를 바꾼다. 떼어내면 뒤의 형제가 한 칸 당겨지므로
-    // "다음 형제의 뒤"는 떼어낸 목록에서 row.index + 1 이다
-    if (key === 'ArrowUp')
-      return row.index > 0 ? { parentId: row.parentId, index: row.index - 1 } : null
-    if (key === 'ArrowDown') {
-      return row.index < siblings.length - 1
-        ? { parentId: row.parentId, index: row.index + 1 }
-        : null
-    }
-
-    // 왼쪽 — 한 단 나온다. 부모의 바로 다음 자리에 선다
-    if (key === 'ArrowLeft') {
-      if (row.parentId === null) return null
-      const parent = findNode(scene, row.parentId)
-      return { parentId: parent?.parentId ?? null, index: indexOfNode(scene, row.parentId) + 1 }
-    }
-
-    // 오른쪽 — 한 단 들어간다. 바로 위 형제의 마지막 자식이 된다
-    if (key === 'ArrowRight') {
-      const previousId = siblings[row.index - 1]
-      if (row.index === 0 || previousId === undefined) return null
-      return { parentId: previousId, index: findNode(scene, previousId)?.childIds.length ?? 0 }
-    }
-
-    return null
-  }
-
   function commitRename(id: NodeId, value: string) {
     const current = scene.nodes[id]
     setRenamingId(null)
@@ -340,23 +295,16 @@ export function Outliner() {
                       title="누르면 선택 · 두 번 누르면 이름 변경(F2) · Alt+방향키로 계층 이동"
                       onClick={() => select([row.id])}
                       onDoubleClick={() => setRenamingId(row.id)}
+                      // **포커스가 곧 선택이다.** Tab 으로 행을 오갈 때 선택이 따라오지 않으면,
+                      // 선택을 기준으로 도는 단축키(Alt+방향키 · Delete)가 키보드만 쓰는
+                      // 사용자에게는 닿지 않는다 — 고르는 방법이 클릭뿐이 된다.
+                      onFocus={() => {
+                        if (!isSelected) select([row.id])
+                      }}
                       onKeyDown={(event) => {
-                        if (event.key === 'F2') {
-                          setRenamingId(row.id)
-                          return
-                        }
-                        if (!event.altKey || !ARROW_KEYS.has(event.key)) return
-
-                        // **더 옮길 수 없더라도 먼저 막는다.** Alt+←/→ 는 브라우저의 뒤로·앞으로
-                        // 가기다. 옮길 자리가 없다고 그냥 두면 아웃라이너에서 방향키를 누른 것이
-                        // 페이지 이탈이 되고, 씬이 메모리에만 있으므로(A-6 미구현) 작업이 통째로
-                        // 사라진다. 맨 위 노드에서 Alt+← 를 누르는 것은 드문 일이 아니다.
-                        event.preventDefault()
-
-                        const placement = keyboardPlacement(row, event.key)
-                        if (!placement) return
-
-                        run(reparentNode(scene, row.id, placement.parentId, placement.index))
+                        // 계층 이동(Alt+방향키)은 여기 없다. 선택을 기준으로 창 전체에서
+                        // 처리하므로 `useEditorShortcuts` 에 있다
+                        if (event.key === 'F2') setRenamingId(row.id)
                       }}
                     >
                       {node.name}
