@@ -1,0 +1,38 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--p-space-2) 0;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--p-space-2);
+
+  padding: 0 var(--p-space-3);
+  height: 24px;
+
+  font-size: var(--p-text-sm);
+  color: var(--c-text-muted);
+  user-select: none;
+}
+
+.ordinal {
+  flex: none;
+  width: 16px;
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}
+
+/* 상태는 색이 아니라 글자로 말한다 — `docs/UX.md` 6절 */
+.state {
+  margin-left: auto;
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}
+
+.note {
+  padding: var(--p-space-1) var(--p-space-3) var(--p-space-2);
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}
