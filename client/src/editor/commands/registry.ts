@@ -58,14 +58,30 @@ function assertSubtreeMatches(state: SceneState, payload: CommandMap['removeNode
   }
 }
 
-/** 노드를 자손째로 다른 부모 밑으로 옮긴다. 자손은 `nodes` 에 그대로 있으므로 따라온다. */
+/**
+ * 노드를 자손째로 다른 부모 밑으로 옮긴다. 자손은 `nodes` 에 그대로 있으므로 따라온다.
+ *
+ * **자리를 벗어난 index 는 거절한다.** `attachNode` 가 쓰는 `insertAt` 은 범위를 넘는 값을
+ * 조용히 끝으로 잘라내는데, 그러면 형제가 줄어든 씬에서 재생했을 때 **거절이 아니라 "끝에
+ * 붙임"이라는 다른 결과**가 나온다. 바로 위 `assertSubtreeMatches` 가 `removeNode` 에 대해
+ * 막아둔 것과 같은 종류이고 같은 원칙이다 — 어느 씬에서 재생하든 같은 결과를 내거나 아무
+ * 일도 하지 않아야 하고, 그 중간은 없다.
+ */
 function moveNode(state: SceneState, nodeId: NodeId, parentId: NodeId | null, index: number) {
   if (isDescendant(state, nodeId, parentId)) {
     throw new Error('노드를 자기 자손 아래로 옮길 수 없습니다')
   }
 
   const node = getNode(state, nodeId)
-  return attachNode(detachNodeOnly(state, nodeId), node, parentId, index)
+  const detached = detachNodeOnly(state, nodeId)
+
+  // 떼어낸 **뒤의** 형제 목록이 기준이다. 붙이는 것은 그다음이므로 끝에 붙이는 것도 유효하다
+  const siblings = parentId === null ? detached.rootIds : getNode(detached, parentId).childIds
+  if (!Number.isInteger(index) || index < 0 || index > siblings.length) {
+    throw new Error(`형제 목록의 자리를 벗어났습니다: ${index} (0~${siblings.length})`)
+  }
+
+  return attachNode(detached, node, parentId, index)
 }
 
 /**

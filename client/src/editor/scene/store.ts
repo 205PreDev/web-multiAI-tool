@@ -115,6 +115,13 @@ export const useEditorStore = create<EditorStore>((set, get) => {
     canUndo: () => get().history.past.length > 0,
     canRedo: () => get().history.future.length > 0,
 
-    select: (ids) => set({ selectedIds: ids }),
+    /**
+     * **입구에서 정리한다.** `select` 는 공개 API 이고 앞으로 조수(F-3)와 협업(K-4)이 부른다.
+     *
+     * 씬에 없는 id 를 그냥 담아두면 화면마다 다르게 말한다 — 인스펙터는 "찾지 못했습니다",
+     * 상태 바는 "선택 없음". 같은 상태를 두 가지로 말하는 것은 사용자가 아니라 코드가
+     * 혼란스러운 것이다. 중복도 지운다 — `['a','a']` 가 "외 1개"로 세어진다.
+     */
+    select: (ids) => set((state) => ({ selectedIds: prune(state.scene, [...new Set(ids)]) })),
   }
 })
