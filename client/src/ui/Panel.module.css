@@ -1,0 +1,50 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background-color: var(--c-surface-raised);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--p-space-2);
+  flex: none;
+
+  padding: 0 var(--p-space-2) 0 var(--p-space-3);
+  height: 30px;
+  border-bottom: var(--p-border-width) solid var(--c-border-subtle);
+}
+
+.title {
+  font-size: var(--p-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--c-text-secondary);
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--p-space-1);
+  margin-left: auto;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/** 아직 구현하지 않은 자리. 무엇이 올 자리인지와 몇 단계인지를 함께 적는다. */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--p-space-1);
+  padding: var(--p-space-3);
+
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}

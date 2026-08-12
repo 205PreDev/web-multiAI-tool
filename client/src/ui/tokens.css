@@ -27,7 +27,38 @@
   --p-red-500: #ef4444;
   --p-green-500: #22c55e;
 
+  /* 어두운 배경 위의 상태 색. 500 판은 패널 배경(gray-900) 위에서 4.1:1 로 모자란다 */
+  --p-amber-400: #fbbf24;
+  --p-green-400: #4ade80;
+
+  /*
+   * 밝은 배경 위에 글자로 얹을 때 쓰는 진한 판.
+   *
+   * 500 계열은 흰 바탕에서 대비가 2.1~3.8:1 로 `docs/UX.md` 6절의 4.5:1 을 넘지 못한다.
+   * 어두운 바탕에서는 같은 값이 넉넉히 넘으므로, **부족한 것은 색이 아니라 조합이다.**
+   * 두 판을 두고 테마마다 고른다 — 그것이 semantic 층이 하는 일이다.
+   */
+  --p-blue-700: #1d4ed8;
+  --p-red-700: #b91c1c;
+  /* 초록·주황은 700 도 회색 패널(gray-100) 위에서 4.1:1 이라 한 단 더 내린다 */
+  --p-amber-800: #92400e;
+  --p-green-800: #166534;
+
+  /* 반투명 값도 primitive 다. 컴포넌트가 rgba() 를 직접 쓰면 리터럴 색이 들어온다 */
+  --p-blue-400-a24: rgb(96 165 250 / 24%);
+  --p-blue-500-a16: rgb(59 130 246 / 16%);
+  --p-white-a06: rgb(255 255 255 / 6%);
+  --p-black-a06: rgb(0 0 0 / 6%);
+  --p-black-a40: rgb(0 0 0 / 40%);
+
+  /* 축 색 — 3D 방향 표시. 빨강/초록/파랑은 3D 도구의 관례라 임의 색이 아니다 */
+  --p-axis-red: #e05a5a;
+  --p-axis-green: #5ac46a;
+  --p-axis-blue: #4a90d9;
+
   /* ── primitive · 간격 ──────────────────────────── */
+  /* 반 칸. 드롭 표시선처럼 눈금 사이로 파고들어야 하는 자리에만 쓴다 */
+  --p-space-05: 2px;
   --p-space-1: 4px;
   --p-space-2: 8px;
   --p-space-3: 12px;
@@ -55,6 +86,9 @@
 
 :root,
 [data-theme='dark'] {
+  /* 스크롤바·기본 폼 위젯처럼 우리가 못 그리는 것들도 테마를 따라오게 한다 */
+  color-scheme: dark;
+
   --c-surface-base: var(--p-gray-950);
   --c-surface-raised: var(--p-gray-900);
   --c-surface-overlay: var(--p-gray-850);
@@ -70,11 +104,28 @@
   --c-accent: var(--p-blue-400);
   --c-accent-contrast: var(--p-gray-950);
 
-  --c-status-ok: var(--p-green-500);
-  --c-status-warn: var(--p-amber-500);
+  --c-status-ok: var(--p-green-400);
+  --c-status-warn: var(--p-amber-400);
   --c-status-danger: var(--p-red-500);
 
   --c-focus-ring: var(--p-blue-400);
+
+  --c-row-hover: var(--p-white-a06);
+  --c-selection-surface: var(--p-blue-400-a24);
+  --c-drop-target: var(--p-blue-400);
+  --c-scrim: var(--p-black-a40);
+
+  /* 뷰포트 크롬 — CSS 가 아니라 three.js 머티리얼이 읽는다. `cssTokens.ts` 참조 */
+  --c-viewport-grid-fine: var(--p-gray-700);
+  --c-viewport-grid-fine-sub: var(--p-gray-800);
+  --c-viewport-grid-major: var(--p-axis-blue);
+  --c-viewport-grid-major-sub: var(--p-gray-600);
+  --c-viewport-selection: var(--p-blue-400);
+  --c-viewport-light-proxy: var(--p-amber-500);
+  --c-axis-x: var(--p-axis-red);
+  --c-axis-y: var(--p-axis-green);
+  --c-axis-z: var(--p-axis-blue);
+  --c-axis-label: var(--p-gray-900);
 }
 
 [data-theme='light'] {
@@ -90,12 +141,30 @@
   --c-text-secondary: var(--p-gray-700);
   --c-text-muted: var(--p-gray-600);
 
-  --c-accent: var(--p-blue-500);
+  /* 글자·아이콘이 얹히는 색이므로 700 판을 쓴다 — 위 primitive 주석 참조 */
+  --c-accent: var(--p-blue-700);
   --c-accent-contrast: var(--p-white);
 
-  --c-status-ok: var(--p-green-500);
-  --c-status-warn: var(--p-amber-500);
-  --c-status-danger: var(--p-red-500);
+  --c-status-ok: var(--p-green-800);
+  --c-status-warn: var(--p-amber-800);
+  --c-status-danger: var(--p-red-700);
 
+  /* 포커스 링은 글자가 아니라 테두리라 3:1 기준이며, 500 판이 흰 바탕에서 3.7:1 이다 */
   --c-focus-ring: var(--p-blue-500);
+
+  --c-row-hover: var(--p-black-a06);
+  --c-selection-surface: var(--p-blue-500-a16);
+  --c-drop-target: var(--p-blue-500);
+  --c-scrim: var(--p-black-a40);
+
+  --c-viewport-grid-fine: var(--p-gray-300);
+  --c-viewport-grid-fine-sub: var(--p-gray-300);
+  --c-viewport-grid-major: var(--p-axis-blue);
+  --c-viewport-grid-major-sub: var(--p-gray-400);
+  --c-viewport-selection: var(--p-blue-500);
+  --c-viewport-light-proxy: var(--p-amber-500);
+  --c-axis-x: var(--p-axis-red);
+  --c-axis-y: var(--p-axis-green);
+  --c-axis-z: var(--p-axis-blue);
+  --c-axis-label: var(--p-white);
 }

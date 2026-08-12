@@ -1,0 +1,64 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--p-space-1);
+
+  padding: var(--p-space-1) var(--p-space-3);
+  border: var(--p-border-width) solid var(--c-border-strong);
+  border-radius: var(--p-radius-sm);
+
+  background-color: var(--c-surface-overlay);
+  color: var(--c-text-primary);
+
+  font-family: inherit;
+  font-size: var(--p-text-sm);
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background-color: var(--c-row-hover);
+  border-color: var(--c-accent);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── variant ─────────────────────────────────── */
+
+.ghost {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--c-text-secondary);
+}
+
+.danger {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--c-status-danger);
+}
+
+.accent {
+  border-color: var(--c-accent);
+  background-color: var(--c-accent);
+  color: var(--c-accent-contrast);
+}
+
+/* ── size ────────────────────────────────────── */
+
+.sm {
+  padding: 0 var(--p-space-2);
+  height: 22px;
+  font-size: var(--p-text-xs);
+}
+
+.icon {
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  font-size: var(--p-text-xs);
+}
