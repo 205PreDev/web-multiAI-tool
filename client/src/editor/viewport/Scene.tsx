@@ -1,17 +1,30 @@
 import { GizmoHelper, OrbitControls } from '@react-three/drei'
+import { useTokenColors } from '../../ui/cssTokens'
 import { AxisGizmo } from './AxisGizmo'
 import { SceneDiagnostics } from './SceneDiagnostics'
 import { SceneNodes } from './SceneNodes'
 
 /**
- * 0단계의 빈 씬. 렌더러가 실제로 그리는지 확인할 최소 구성만 둔다.
- * 씬 그래프와 선택·기즈모는 1단계다.
+ * 뷰포트의 씬 (A-1) — 궤도 카메라 · 그리드 · 그림자.
  *
  * **그리드는 drei 의 `Grid` 가 아니라 three 코어의 `GridHelper` 를 쓴다.**
  * `Grid` 는 raw `ShaderMaterial` 위에 서 있어 WebGPURenderer 가 컴파일하지 못하고
  * 조용히 빠진다. 자세한 것은 `client/src/editor/viewport/README.md`.
+ *
+ * 그리드 색은 UI 크롬이므로 디자인 토큰에서 읽는다(N-14). CSS 가 아니라 three 머티리얼이
+ * 쓰는 값이라 `var()` 를 넘길 수 없어 `ui/cssTokens.ts` 가 계산된 값을 꺼내 온다.
  */
+
+const TOKENS = [
+  '--c-viewport-grid-fine',
+  '--c-viewport-grid-fine-sub',
+  '--c-viewport-grid-major',
+  '--c-viewport-grid-major-sub',
+] as const
+
 export function Scene() {
+  const tokens = useTokenColors(TOKENS)
+
   return (
     <>
       <ambientLight intensity={0.6} />
@@ -40,13 +53,13 @@ export function Scene() {
 
       {/* 그리드 두 겹 — 촘촘한 것과 굵은 것. y 를 조금씩 띄워 바닥과 z-파이팅을 피한다. */}
       <gridHelper
-        args={[40, 80, '#2a313c', '#232a33']}
+        args={[40, 80, tokens['--c-viewport-grid-fine'], tokens['--c-viewport-grid-fine-sub']]}
         position={[0, 0.002, 0]}
         material-transparent
         material-opacity={0.55}
       />
       <gridHelper
-        args={[40, 16, '#4a90d9', '#3d4552']}
+        args={[40, 16, tokens['--c-viewport-grid-major'], tokens['--c-viewport-grid-major-sub']]}
         position={[0, 0.003, 0]}
         material-transparent
         material-opacity={0.75}
