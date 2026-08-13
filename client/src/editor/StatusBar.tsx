@@ -1,3 +1,6 @@
+import { kindLabel } from './scene/kindInfo'
+import { findNode } from './scene/mutations'
+import { useEditorStore } from './scene/store'
 import { useRendererReport, type RendererReport } from './viewport/rendererReport'
 import styles from './StatusBar.module.css'
 
@@ -52,13 +55,35 @@ const toneClass: Record<Tone, string> = {
   danger: styles.danger ?? '',
 }
 
+/**
+ * 선택 표시. **하드코딩된 "선택 없음"을 없앤 자리다** — 스토어에 `selectedIds` 와 `select` 가
+ * 있었는데 `select` 를 부르는 코드가 저장소에 하나도 없었고, 그래서 여기도 고정 문자열이었다.
+ *
+ * 여러 개 선택(A-7)은 P1이라 아직 배열의 첫 번째만 읽는다. 개수는 함께 보여준다 —
+ * 그 자리가 있다는 것이 나중에 배선을 찾는 단서가 된다.
+ */
+function useSelectionLabel(): string {
+  return useEditorStore((state) => {
+    const [first, ...rest] = state.selectedIds
+    if (first === undefined) return '선택 없음'
+
+    // `nodes[first]` 를 직접 읽지 않는다 — `mutations.ts` 의 `findNode` 주석 참조
+    const node = findNode(state.scene, first)
+    if (!node) return '선택 없음'
+
+    const suffix = rest.length > 0 ? ` 외 ${rest.length}개` : ''
+    return `${node.name} · ${kindLabel(node.kind)}${suffix}`
+  })
+}
+
 export function StatusBar() {
   const report = useRendererReport((s) => s.report)
   const renderer = report ? describeRenderer(report) : null
+  const selection = useSelectionLabel()
 
   return (
     <footer className={styles.bar}>
-      <span className={styles.slot}>선택 없음</span>
+      <span className={styles.slot}>{selection}</span>
       <span className={styles.spacer} />
       <span className={styles.slot}>
         렌더러{' '}

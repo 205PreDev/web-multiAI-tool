@@ -1,0 +1,38 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--p-space-3);
+  flex: none;
+
+  padding: 0 var(--p-space-3);
+  height: 36px;
+
+  background-color: var(--c-surface-raised);
+  border-bottom: var(--p-border-width) solid var(--c-border-subtle);
+  user-select: none;
+}
+
+.brand {
+  font-size: var(--p-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+}
+
+.project {
+  font-size: var(--p-text-sm);
+  color: var(--c-text-primary);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.slot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--p-space-1);
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}

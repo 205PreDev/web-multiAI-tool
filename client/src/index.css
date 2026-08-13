@@ -15,6 +15,19 @@ body,
   padding: 0;
 }
 
+/*
+ * 폼 요소는 지정하지 않으면 **UA 기본값**을 씁니다 — `ButtonFace` 배경, `ButtonText` 글자,
+ * `Arial 13.33px`. 그 값들은 semantic 토큰이 아니므로 **테마를 따라가지 않고**, 소스에는 색
+ * 리터럴이 없으므로 N-14 검사도 잡지 못합니다. 한 번에 끊습니다.
+ */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
 body {
   font-family: var(--p-font-sans);
   font-size: var(--p-text-md);

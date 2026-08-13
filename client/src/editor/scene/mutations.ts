@@ -21,6 +21,19 @@ export function getNode(state: SceneState, id: NodeId): SceneNode {
   return state.nodes[id] as SceneNode
 }
 
+/**
+ * 없으면 `null`. **화면이 읽을 때 쓴다** — 상태 바·인스펙터·단축키는 사라진 노드를 만나도
+ * 던지면 안 되고 아무것도 안 그리면 된다.
+ *
+ * **`state.nodes[id] ?? null` 로 쓰지 않는다.** 그것이 위의 `hasNode` 주석이 말하는 바로 그
+ * 구멍이다 — `nodes['constructor']` 는 프로토타입의 함수를 돌려주고 함수는 truthy 라
+ * `?? null` 을 그냥 통과한다. 그 값을 노드로 알고 `kind` 를 읽으면 `undefined` 가 나오고,
+ * 표시 이름을 찾는 쪽에서 터진다. 선택 id 는 `select()` 를 통해 밖에서도 들어올 수 있다.
+ */
+export function findNode(state: SceneState, id: NodeId): SceneNode | null {
+  return hasNode(state, id) ? (state.nodes[id] as SceneNode) : null
+}
+
 function siblingsOf(state: SceneState, parentId: NodeId | null): readonly NodeId[] {
   return parentId === null ? state.rootIds : getNode(state, parentId).childIds
 }

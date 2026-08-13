@@ -1,0 +1,210 @@
+.tree {
+  display: flex;
+  flex-direction: column;
+  padding: var(--p-space-1) 0 var(--p-space-4);
+  min-height: 100%;
+}
+
+/* ── 행 ──────────────────────────────────────── */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--p-space-1);
+
+  padding-right: var(--p-space-2);
+  height: 24px;
+  flex: none;
+
+  font-size: var(--p-text-sm);
+  color: var(--c-text-primary);
+  white-space: nowrap;
+  cursor: default;
+  user-select: none;
+}
+
+.row:hover {
+  background-color: var(--c-row-hover);
+}
+
+.selected {
+  background-color: var(--c-selection-surface);
+  box-shadow: inset 2px 0 0 var(--c-accent);
+}
+
+/* 드래그 중인 행은 옅게 — 무엇을 들고 있는지 보인다 */
+.dragging {
+  opacity: 0.4;
+}
+
+/* 이 노드 안으로 들어간다는 표시 */
+.intoTarget {
+  outline: var(--p-border-width) solid var(--c-drop-target);
+  outline-offset: -1px;
+}
+
+.indent {
+  flex: none;
+}
+
+.twisty {
+  flex: none;
+  width: 14px;
+  border: 0;
+  padding: 0;
+
+  background: none;
+  color: var(--c-text-muted);
+  font-size: var(--p-text-xs);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.glyph {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  color: var(--c-text-muted);
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kind {
+  flex: none;
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}
+
+.rename {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  padding: 0 var(--p-space-1);
+
+  border: var(--p-border-width) solid var(--c-accent);
+  border-radius: var(--p-radius-sm);
+
+  background-color: var(--c-surface-base);
+  color: var(--c-text-primary);
+  font: inherit;
+  font-size: var(--p-text-sm);
+}
+
+/* 삭제 버튼은 평소에 숨는다. 행마다 ✕ 가 보이면 목록이 읽히지 않는다 */
+.trailing {
+  display: flex;
+  align-items: center;
+  flex: none;
+  visibility: hidden;
+}
+
+.row:hover .trailing,
+.row:focus-within .trailing {
+  visibility: visible;
+}
+
+/* ── 행 사이의 틈 ────────────────────────────── */
+
+/* 행 사이로 파고드는 4px 띠. 위아래로 반 칸씩 겹쳐 행 높이를 늘리지 않는다 */
+.gap {
+  height: var(--p-space-1);
+  flex: none;
+  margin: calc(-1 * var(--p-space-05)) 0;
+  position: relative;
+  z-index: 1;
+}
+
+.gapActive::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1px;
+  height: 2px;
+  background-color: var(--c-drop-target);
+}
+
+/* ── 빈 상태 ─────────────────────────────────── */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--p-space-2);
+  padding: var(--p-space-4) var(--p-space-3);
+
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}
+
+/* ── 추가 메뉴 ───────────────────────────────── */
+
+.menu {
+  position: absolute;
+  top: 28px;
+  right: var(--p-space-2);
+  z-index: 5;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--p-space-1);
+  padding: var(--p-space-2);
+  min-width: 148px;
+
+  border: var(--p-border-width) solid var(--c-border-strong);
+  border-radius: var(--p-radius-md);
+  background-color: var(--c-surface-overlay);
+  box-shadow: 0 4px 16px var(--c-scrim);
+}
+
+.menuAnchor {
+  position: relative;
+}
+
+.menuLabel {
+  padding: var(--p-space-1) var(--p-space-1) 0;
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+  user-select: none;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--p-space-2);
+
+  padding: 0 var(--p-space-2);
+  height: 24px;
+  width: 100%;
+  border: 0;
+  border-radius: var(--p-radius-sm);
+
+  background: none;
+  color: var(--c-text-primary);
+  font: inherit;
+  font-size: var(--p-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background-color: var(--c-row-hover);
+}
+
+.menuTarget {
+  padding: var(--p-space-1);
+  font-size: var(--p-text-xs);
+  color: var(--c-text-muted);
+}

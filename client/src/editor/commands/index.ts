@@ -31,6 +31,7 @@ export { describeCommand, targetNodeId, HISTORY_LIMIT } from './history'
 export { serializeCommand, parseCommand, validateCommand, CommandParseError } from './serialize'
 
 export {
+  DEFAULT_MATERIAL,
   createNode,
   addNode,
   removeNode,

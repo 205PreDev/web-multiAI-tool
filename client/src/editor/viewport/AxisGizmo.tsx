@@ -1,6 +1,7 @@
 import { useGizmoContext } from '@react-three/drei'
 import { useEffect, useMemo, useState } from 'react'
 import { CanvasTexture, type Vector3 } from 'three'
+import { useTokenColors } from '../../ui/cssTokens'
 
 /**
  * 화면 구석의 방향 표시. drei 의 `GizmoViewport` 를 대신한다.
@@ -17,15 +18,17 @@ const LABEL_FONT = '600 22px system-ui, sans-serif'
 
 interface AxisSpec {
   label: string
-  color: string
+  token: (typeof TOKENS)[number]
   position: [number, number, number]
   rotation: [number, number, number]
 }
 
+const TOKENS = ['--c-axis-x', '--c-axis-y', '--c-axis-z', '--c-axis-label'] as const
+
 const AXES: AxisSpec[] = [
-  { label: 'X', color: '#e05a5a', position: [1, 0, 0], rotation: [0, 0, 0] },
-  { label: 'Y', color: '#5ac46a', position: [0, 1, 0], rotation: [0, 0, Math.PI / 2] },
-  { label: 'Z', color: '#4a90d9', position: [0, 0, 1], rotation: [0, -Math.PI / 2, 0] },
+  { label: 'X', token: '--c-axis-x', position: [1, 0, 0], rotation: [0, 0, 0] },
+  { label: 'Y', token: '--c-axis-y', position: [0, 1, 0], rotation: [0, 0, Math.PI / 2] },
+  { label: 'Z', token: '--c-axis-z', position: [0, 0, 1], rotation: [0, -Math.PI / 2, 0] },
 ]
 
 function createHeadTexture(color: string, label: string | null, labelColor: string) {
@@ -113,19 +116,21 @@ function AxisHead({
   )
 }
 
-export function AxisGizmo({ labelColor = '#12151a' }: { labelColor?: string }) {
+export function AxisGizmo() {
   const { tweenCamera } = useGizmoContext()
+  const tokens = useTokenColors(TOKENS)
+  const labelColor = tokens['--c-axis-label']
 
   return (
     <group scale={40}>
       {AXES.map((axis) => (
-        <AxisShaft key={axis.label} color={axis.color} rotation={axis.rotation} />
+        <AxisShaft key={axis.label} color={tokens[axis.token]} rotation={axis.rotation} />
       ))}
 
       {AXES.map((axis) => (
         <AxisHead
           key={axis.label}
-          color={axis.color}
+          color={tokens[axis.token]}
           label={axis.label}
           labelColor={labelColor}
           position={axis.position}
@@ -136,7 +141,7 @@ export function AxisGizmo({ labelColor = '#12151a' }: { labelColor?: string }) {
       {AXES.map((axis) => (
         <AxisHead
           key={`-${axis.label}`}
-          color={axis.color}
+          color={tokens[axis.token]}
           label={null}
           labelColor={labelColor}
           position={[-axis.position[0], -axis.position[1], -axis.position[2]]}

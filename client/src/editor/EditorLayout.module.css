@@ -1,0 +1,119 @@
+/*
+ * `docs/UX.md` 2절의 배치.
+ *
+ * 왼쪽은 "무엇이 있는가"(아웃라이너)와 "어디까지 왔는가"(파이프라인),
+ * 오른쪽은 "선택한 것을 어떻게 바꾸는가"(인스펙터)와 "새로 만드는 행위"(생성·조수).
+ * 타임라인은 뷰포트 아래 고정이다 — 이벤트 마커와 오디오가 같은 시간축에 겹쳐 보이는 것이
+ * 이 제품의 정체성이므로 다른 곳으로 옮기지 않는다.
+ */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background-color: var(--c-surface-base);
+  color: var(--c-text-primary);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.left,
+.right {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  min-height: 0;
+  background-color: var(--c-surface-raised);
+}
+
+.left {
+  width: 260px;
+  border-right: var(--p-border-width) solid var(--c-border-subtle);
+}
+
+.right {
+  width: 280px;
+  border-left: var(--p-border-width) solid var(--c-border-subtle);
+}
+
+/* 아웃라이너가 남는 높이를 갖고, 파이프라인은 내용만큼만 차지한다 */
+.grow {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border-bottom: var(--p-border-width) solid var(--c-border-subtle);
+}
+
+.fixed {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+ * 토스트가 자리 잡는 기준. **`.center` 가 아니라 여기다** — `.center` 는 타임라인까지
+ * 포함하므로 그것을 기준으로 하면 "화면 아래"가 타임라인 패널 안이 된다.
+ */
+.stage {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.timeline {
+  flex: none;
+  height: 96px;
+  border-top: var(--p-border-width) solid var(--c-border-subtle);
+}
+
+/*
+ * 에디터는 데스크톱 전용입니다 — `docs/UX.md` 6절. 3D 편집을 모바일에 욱여넣는 흉내를
+ * 내지 않고, **좁으면 안내를 보여줍니다.** 양쪽 패널이 고정 폭이라 그냥 두면 뷰포트가
+ * 먼저 찌그러지고 더 좁아지면 사라지는데, 그 화면에는 아무 설명이 없습니다.
+ *
+ * 갤러리·뷰어·랜딩(`site/`)은 반대로 모바일 우선이며 이 규칙의 대상이 아닙니다.
+ */
+.narrow {
+  display: none;
+}
+
+@media (width < 1280px) {
+  .body,
+  .timeline {
+    display: none;
+  }
+
+  .narrow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--p-space-2);
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: var(--p-space-6);
+
+    color: var(--c-text-secondary);
+    text-align: center;
+  }
+}
+
+.narrowDetail {
+  font-size: var(--p-text-sm);
+  color: var(--c-text-muted);
+}

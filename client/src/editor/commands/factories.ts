@@ -11,7 +11,12 @@ import { COMMAND_VERSION, type Command } from './types'
  * 적용 시점에 값을 읽으면 그 시점의 상태에 따라 결과가 갈라진다.
  */
 
-const DEFAULT_MATERIAL: MaterialState = {
+/**
+ * 새 노드의 머티리얼. **씬 콘텐츠이므로 디자인 토큰(N-14)의 대상이 아니다** — 이 값은
+ * 씬 그래프에 저장되고 glTF 로 나가므로 테마를 따라가면 안 된다. 뷰포트가 머티리얼 없는
+ * 노드를 그릴 때도 같은 값을 써야 해서 내보낸다.
+ */
+export const DEFAULT_MATERIAL: MaterialState = {
   color: '#c9ced6',
   roughness: 0.5,
   metalness: 0,
