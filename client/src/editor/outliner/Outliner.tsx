@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Button } from '../../ui/Button'
 import { Panel } from '../../ui/Panel'
 import { toast } from '../../ui/toast'
@@ -110,6 +110,33 @@ export function Outliner() {
    */
   const rejection = useRef<string | null>(null)
 
+  /** 트리 밖을 지나갔는지 판정하는 데 쓴다 */
+  const treeRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * 트리 밖을 지나가면 사유를 거둔다 — 나간 자리는 시도한 자리가 아니다.
+   *
+   * **`dragleave` 로는 이것을 알 수 없다.** 드래그가 끝날 때 브라우저는 `dragend` 를 보내기
+   * 직전에 마지막 대상에게 `dragleave` 를 한 번 더 보낸다. 그래서 `dragleave` 에서 사유를
+   * 거두면 **거절된 자리에 놓은 바로 그 순간의 사유가 함께 지워지고**, 금지 커서는 떴는데
+   * 놓아도 아무 말이 없는 상태가 된다. 실제로 그랬다.
+   *
+   * `dragover` 는 반대로 놓는 순간에는 오지 않는다. 사용자가 실제로 밖으로 지나갈 때만
+   * 오므로 "나갔다"의 신호로 쓸 수 있다. 창 전체에서 받는 이유는 트리 밖 요소의 이벤트가
+   * 트리로 올라오지 않기 때문이다.
+   */
+  useEffect(() => {
+    if (dragId === null) return
+
+    function onDragOverAnywhere(event: Event) {
+      const tree = treeRef.current
+      if (tree && !tree.contains(event.target as Node | null)) rejection.current = null
+    }
+
+    window.addEventListener('dragover', onDragOverAnywhere)
+    return () => window.removeEventListener('dragover', onDragOverAnywhere)
+  }, [dragId])
+
   const rows = flatten(scene, collapsed)
   const selectedId = selectedIds[0] ?? null
   const selectedNode = selectedId === null ? null : findNode(scene, selectedId)
@@ -125,14 +152,15 @@ export function Outliner() {
    *
    * **여기가 "드롭 실패"를 말할 수 있는 유일한 자리다.** 유효하지 않은 자리에서는 아래처럼
    * `preventDefault` 를 하지 않아 브라우저가 금지 커서를 보여주는데, 그 대가로 **그 자리에서는
-   * `drop` 이 발생하지 않는다.** `dropEffect === 'none'` 은 어느 대상도 드롭을 받지 않았다는
-   * 뜻이고, 그때 마지막으로 지나간 자리가 거절이었다면 그것이 사용자가 시도한 것이다.
-   * 이 처리가 없으면 `docs/UX.md` 3.7절이 금지한 "조용한 무시"가 된다.
+   * `drop` 이 발생하지 않는다.** 이 처리가 없으면 `docs/UX.md` 3.7절이 금지한 "조용한 무시"가
+   * 된다.
+   *
+   * **사유가 남아 있다는 것 자체가 조건이다.** 사유는 세 자리에서 지워진다 — 유효한 자리를
+   * 지나갈 때, 트리 밖을 지나갈 때, 그리고 드롭이 성사돼 `endDrag` 가 도는 자리. 셋 중 어느
+   * 것도 일어나지 않은 채 드래그가 끝났다면 사용자가 마지막으로 시도한 것은 거절된 자리다.
    */
-  function handleDragEnd(event: DragEvent) {
-    if (event.dataTransfer.dropEffect === 'none' && rejection.current) {
-      toast(rejection.current, 'danger')
-    }
+  function handleDragEnd() {
+    if (rejection.current) toast(rejection.current, 'danger')
     endDrag()
   }
 
@@ -159,10 +187,12 @@ export function Outliner() {
     if (!sameTarget(hover, target)) setHover(target)
   }
 
-  /** 트리 밖으로 나가면 표시선도 사유도 거둔다 — 나간 자리는 시도한 자리가 아니다 */
+  /**
+   * 트리 밖으로 나가면 표시선을 거둔다. **사유는 여기서 거두지 않는다** — 위 `useEffect` 주석에
+   * 있듯 이 이벤트는 드래그가 끝나는 순간에도 한 번 더 오기 때문이다.
+   */
   function handleDragLeaveTree(event: DragEvent) {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-    rejection.current = null
     setHover(null)
   }
 
@@ -197,7 +227,7 @@ export function Outliner() {
       title="아웃라이너"
       actions={<AddMenu targetName={selectedNode?.name ?? null} onAdd={addKind} />}
     >
-      <div className={styles.tree} onDragLeave={handleDragLeaveTree}>
+      <div className={styles.tree} ref={treeRef} onDragLeave={handleDragLeaveTree}>
         {rows.length === 0 ? (
           // `docs/UX.md` 4절은 이 자리를 3.1절의 중앙 프롬프트에 맡겼는데 그것은 3단계다.
           // 그때까지는 세 입구 중 지금 있는 하나(A-11)를 가리킨다.
