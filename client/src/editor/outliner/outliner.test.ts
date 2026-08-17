@@ -79,6 +79,35 @@ describe('드롭 판정 — 자리', () => {
     })
   })
 
+  /**
+   * **같은 부모 위에 떨어뜨리는 분기.** 위의 단언은 다른 부모에서 들어오는 경우만 태우고,
+   * 제자리 판정은 그 앞에서 `null` 로 끝나 여기까지 오지 않는다. 그래서 "이미 이 부모의
+   * 자식이지만 마지막은 아닌" 경우가 검사 밖에 있었다.
+   *
+   * 자리 보정이 필요한 이유는 틈에 떨어뜨릴 때와 같다 — 떼어낸 뒤의 형제 목록이 기준이라
+   * 마지막 자리는 `siblings.length` 가 아니라 `siblings.length - 1` 이다. 보정을 빠뜨리면
+   * 자리를 벗어난 index 가 되어 `moveNode` 가 거절하고, 사용자에게는 **자기 부모 위로는
+   * 드롭이 안 되는 것**으로 보인다.
+   */
+  it('이미 그 부모의 자식이면 마지막 자리로 보정한다', () => {
+    const { scene, groupId, box1, box2 } = fixture()
+
+    expect(resolveDrop(scene, box1, { kind: 'onNode', nodeId: groupId })).toStrictEqual({
+      parentId: groupId,
+      index: 1,
+    })
+
+    // 숫자만으로는 그 자리가 유효한지 알 수 없다 — 커맨드를 실제로 태운다
+    const placement = resolveDrop(scene, box1, { kind: 'onNode', nodeId: groupId })
+    if (!placement) throw new Error('자리를 얻지 못했습니다')
+
+    const command = reparentNode(scene, box1, placement.parentId, placement.index)
+    const moved = applyCommand(scene, command)
+
+    expect(moved.nodes[groupId]?.childIds).toStrictEqual([box2, box1])
+    expect(revertCommand(moved, command)).toStrictEqual(scene)
+  })
+
   it('제자리에 떨어뜨린 것은 커맨드를 만들지 않는다', () => {
     const { scene, groupId, box2, box3 } = fixture()
 
