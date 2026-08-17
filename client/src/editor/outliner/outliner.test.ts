@@ -444,6 +444,64 @@ describe('접힘 — 커맨드가 건드린 노드는 화면에 보인다', () =
     expect(collapsedNow().has(groupId)).toBe(false)
   })
 
+  /**
+   * **스택에 커맨드가 하나뿐이면 앞뒤가 같은 원소다.** 위의 두 단언은 그 상태만 태우므로,
+   * 되돌리기가 꺼낸 커맨드를 `future[0]` 이 아니라 `future.at(-1)` 에서 읽어도 통과한다.
+   * 그 둘이 갈라지려면 스택에 둘 이상이 쌓이고 **각 커맨드의 대상 조상이 서로 달라야** 한다.
+   *
+   * 뒤집혔을 때의 증상은 오류가 아니라 어긋난 화면이다 — 엉뚱한 커맨드의 대상이 펼쳐지고
+   * 정작 되살아난 노드는 접힌 채로 남는다.
+   */
+  function twoGroups() {
+    const g1 = add(EMPTY_SCENE, 'group', '그룹 1', null)
+    const a = add(g1.state, 'box', '박스 A', g1.id)
+    const g2 = add(a.state, 'group', '그룹 2', null)
+    const b = add(g2.state, 'box', '박스 B', g2.id)
+
+    return { scene: b.state, g1: g1.id, g2: g2.id, a: a.id, b: b.id }
+  }
+
+  it('되돌리기는 스택의 맨 뒤가 아니라 방금 꺼낸 커맨드를 본다', () => {
+    const { scene, g1, g2, a, b } = twoGroups()
+    const store = storeWith(scene, [])
+
+    let current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, a, 'A 1차')).ok).toBe(true)
+    current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, b, 'B 1차')).ok).toBe(true)
+
+    // 한 번 되돌려 스택 양쪽에 커맨드를 남긴 뒤, 두 번째 되돌리기를 검사한다
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+    useEditorStore.setState({ collapsedIds: new Set([g1, g2]) })
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+
+    // 두 번째로 되돌린 것은 박스 A 의 이름 변경이다 — 펼쳐질 것은 그룹 1 이다
+    expect(collapsedNow().has(g1)).toBe(false)
+    expect(collapsedNow().has(g2)).toBe(true)
+  })
+
+  it('다시 실행도 방금 적용한 커맨드를 본다', () => {
+    const { scene, g1, g2, a, b } = twoGroups()
+    const store = storeWith(scene, [])
+
+    let current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, a, 'A 1차')).ok).toBe(true)
+    current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, b, 'B 1차')).ok).toBe(true)
+
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+
+    // 한 번 다시 실행해 스택 양쪽에 남긴 뒤, 두 번째 다시 실행을 검사한다
+    expect(useEditorStore.getState().redo().ok).toBe(true)
+    useEditorStore.setState({ collapsedIds: new Set([g1, g2]) })
+    expect(useEditorStore.getState().redo().ok).toBe(true)
+
+    // 두 번째로 다시 실행한 것은 박스 B 의 이름 변경이다
+    expect(collapsedNow().has(g2)).toBe(false)
+    expect(collapsedNow().has(g1)).toBe(true)
+  })
+
   it('건드리지 않은 접힘은 그대로 두고, 바뀐 것이 없으면 같은 Set 을 돌려준다', () => {
     // 매번 새 Set 을 만들면 커맨드 하나마다 아웃라이너 전체가 다시 그려진다
     const { scene, groupId, box3 } = fixture()
