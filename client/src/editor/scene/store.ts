@@ -3,10 +3,10 @@ import {
   EMPTY_HISTORY,
   redo as redoHistory,
   pushCommand,
+  targetNodeId,
   undo as undoHistory,
   type History,
 } from '../commands/history'
-import { targetNodeId } from '../commands/history'
 import { validateCommand } from '../commands/serialize'
 import type { Command } from '../commands/types'
 import { ancestorIds, hasNode } from './mutations'
@@ -82,6 +82,12 @@ export const useEditorStore = create<EditorStore>((set, get) => {
    * 적어 두면 새 경로가 그것을 빠뜨려도 아무 검사에 걸리지 않는다. `targetNodeId` 는 그런
    * 용도로 커맨드 정의가 이미 들고 있는 것이다.
    *
+   * **커맨드 타입을 가리지 않는다.** 노드를 옮기지 않는 것들(이름 변경 · 트랜스폼 · 머티리얼)
+   * 에서도 대상의 조상이 펼쳐진다. 조수(F-3)가 접힌 그룹 안의 노드를 고치거나, 뷰포트에서
+   * 고른 노드를 기즈모로 끌면 아웃라이너가 그 그룹을 편다 — 바뀐 것이 어디서 일어났는지
+   * 화면이 가리키는 편이 낫다고 보아 그렇게 두었다. 타입별로 가르려면 커맨드 계층 밖에
+   * 타입 목록이 하나 더 생기고, 그 목록은 새 타입이 들어와도 컴파일이 통과한다.
+   *
    * 조상만 펼친다. 노드 자신이 접혀 있는 것은 자기 행이 보이는 것을 막지 않는다.
    * **바뀐 것이 없으면 같은 Set 을 돌려준다** — 새 Set 을 만들면 아웃라이너가 매번 다시 그린다.
    */
@@ -143,8 +149,12 @@ export const useEditorStore = create<EditorStore>((set, get) => {
         set((state) => {
           const result = undoHistory(state.scene, state.history)
           // 되돌린 커맨드의 대상도 보여야 한다 — 되살아난 노드가 접힌 그룹 안에 있으면
-          // Ctrl+Z 를 눌러도 화면이 그대로다
-          const command = state.history.past.at(-1)
+          // Ctrl+Z 를 눌러도 화면이 그대로다.
+          //
+          // **어느 커맨드가 꺼내졌는지는 결과에서 읽는다.** `past.at(-1)` 로 다시 셈하면
+          // "되돌리기는 마지막 하나를 꺼낸다"를 여기서 한 번 더 가정하게 되는데, 연속 조작
+          // 병합(`history.ts` 머리말)이 들어오면 그 가정이 깨진다. 꺼내진 것은 future 의 맨 앞이다
+          const command = result.history.future[0]
           return {
             ...result,
             selectedIds: prune(result.scene, state.selectedIds),
@@ -163,7 +173,8 @@ export const useEditorStore = create<EditorStore>((set, get) => {
       try {
         set((state) => {
           const result = redoHistory(state.scene, state.history)
-          const command = state.history.future[0]
+          // 같은 이유로 결과에서 읽는다. 다시 실행한 것은 past 의 맨 뒤다
+          const command = result.history.past.at(-1)
           return {
             ...result,
             selectedIds: prune(result.scene, state.selectedIds),
