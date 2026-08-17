@@ -415,6 +415,35 @@ describe('접힘 — 커맨드가 건드린 노드는 화면에 보인다', () =
     expect(collapsedNow().has(groupId)).toBe(false)
   })
 
+  it('조상이 아닌 접힘은 함께 지우지 않는다', () => {
+    // **이것이 없으면 "접힘을 통째로 비운다"는 구현이 그대로 통과한다.** 위의 단언들은 접어 둔
+    // 것이 전부 대상의 조상이라, 조상을 지우는 것과 전부 지우는 것을 구별하지 못한다
+    const outer = add(EMPTY_SCENE, 'group', '바깥 그룹', null)
+    const other = add(outer.state, 'group', '옆 그룹', null)
+    const store = storeWith(other.state, [outer.id, other.id])
+
+    expect(store.execute(buildAddCommand(other.state, 'box', outer.id)).ok).toBe(true)
+    expect(collapsedNow().has(outer.id)).toBe(false)
+    expect(collapsedNow().has(other.id)).toBe(true)
+  })
+
+  it('다시 실행으로 되돌아간 노드도 보인다', () => {
+    // 되돌리기와 다시 실행은 서로 다른 커맨드를 꺼내므로 한쪽만 검사하면 반쪽이다.
+    // 접힌 그룹에 추가 → Ctrl+Z → Ctrl+Y 가 그 경로다
+    const { scene, groupId } = fixture()
+    const store = storeWith(scene, [groupId])
+
+    expect(store.execute(buildAddCommand(scene, 'box', groupId)).ok).toBe(true)
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+
+    // 되돌린 뒤 다시 접는다 — 접힌 채로 다시 실행하는 것이 검사하려는 상태다
+    useEditorStore.setState({ collapsedIds: new Set([groupId]) })
+
+    expect(useEditorStore.getState().redo().ok).toBe(true)
+    expect(useEditorStore.getState().scene.nodes[groupId]?.childIds).toHaveLength(3)
+    expect(collapsedNow().has(groupId)).toBe(false)
+  })
+
   it('건드리지 않은 접힘은 그대로 두고, 바뀐 것이 없으면 같은 Set 을 돌려준다', () => {
     // 매번 새 Set 을 만들면 커맨드 하나마다 아웃라이너 전체가 다시 그려진다
     const { scene, groupId, box3 } = fixture()
