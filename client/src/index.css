@@ -26,7 +26,20 @@ select,
 textarea {
   font: inherit;
   color: inherit;
-  /* 배경까지 끊어야 ButtonFace 가 사라진다. 투명은 값이 아니라 참조라 부모 면의 토큰을 따라간다 */
+}
+
+/*
+ * 배경까지 끊어야 `ButtonFace` 가 사라집니다. 투명은 값이 아니라 참조라 부모 면의 토큰을
+ * 따라갑니다.
+ *
+ * **체크박스 계열은 뺍니다.** 그 셋은 배경이 칠할 면이 아니라 위젯 자신의 그림이며,
+ * Firefox 는 `background-color` 를 그대로 받아 칸을 비워 그립니다. 인스펙터(A-4)가 첫
+ * 소비자가 될 자리입니다.
+ */
+button,
+select,
+textarea,
+input:not([type='checkbox'], [type='radio'], [type='range']) {
   background-color: transparent;
 }
 
