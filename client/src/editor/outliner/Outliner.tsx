@@ -126,18 +126,22 @@ export function Outliner() {
    * 트리로 올라오지 않기 때문이다.
    */
   useEffect(() => {
-    if (dragId === null) return
-
     function onDragOverAnywhere(event: Event) {
       const tree = treeRef.current
       if (tree && !tree.contains(event.target as Node | null)) rejection.current = null
     }
 
+    // **드래그 중에만 걸지 않는다.** 드래그가 시작된 렌더의 이펙트가 도는 시점과 첫
+    // `dragover` 가 오는 시점의 앞뒤가 보장되지 않는다. `dragover` 는 드래그 중에만
+    // 발생하므로 걸어두는 값이 사실상 없다
     window.addEventListener('dragover', onDragOverAnywhere)
     return () => window.removeEventListener('dragover', onDragOverAnywhere)
-  }, [dragId])
+  }, [])
 
   const rows = flatten(scene, collapsed)
+
+  /** 목록의 맨 끝. 마지막 틈과 트리의 빈 아래쪽이 함께 가리킨다 */
+  const rootEndTarget: DropTarget = { kind: 'gap', parentId: null, index: scene.rootIds.length }
   const selectedId = selectedIds[0] ?? null
   const selectedNode = selectedId === null ? null : findNode(scene, selectedId)
 
@@ -209,6 +213,27 @@ export function Outliner() {
     endDrag()
   }
 
+  /**
+   * 목록 아래의 빈 자리.
+   *
+   * **여기를 비워두면 두 가지가 잘못된다.** 노드를 루트 끝으로 빼려고 목록 아래 빈 곳에 놓는
+   * 것은 사용자가 먼저 시도하는 동작인데 아무 일도 일어나지 않고(UX 3.7절이 금지한 조용한
+   * 무시), 오는 길에 거절된 행을 스쳤다면 그 사유가 남아 있다가 **놓은 적도 없는 자리의
+   * 사유로 토스트에 뜬다.** 빈 자리를 마지막 틈과 같은 자리로 등록해 둘을 함께 닫는다.
+   *
+   * 행에서 올라온 이벤트는 그 행이 이미 처리했으므로 걸러낸다. 걸러내지 않으면 버블링을 타고
+   * 여기까지 와서 행이 정한 자리를 루트 끝으로 덮어쓴다.
+   */
+  function handleTreeDragOver(event: DragEvent) {
+    if (event.target !== event.currentTarget) return
+    handleDragOver(event, rootEndTarget)
+  }
+
+  function handleTreeDrop(event: DragEvent) {
+    if (event.target !== event.currentTarget) return
+    handleDrop(event, rootEndTarget)
+  }
+
   function commitRename(id: NodeId, value: string) {
     const current = scene.nodes[id]
     setRenamingId(null)
@@ -227,7 +252,13 @@ export function Outliner() {
       title="아웃라이너"
       actions={<AddMenu targetName={selectedNode?.name ?? null} onAdd={addKind} />}
     >
-      <div className={styles.tree} ref={treeRef} onDragLeave={handleDragLeaveTree}>
+      <div
+        className={styles.tree}
+        ref={treeRef}
+        onDragLeave={handleDragLeaveTree}
+        onDragOver={handleTreeDragOver}
+        onDrop={handleTreeDrop}
+      >
         {rows.length === 0 ? (
           // `docs/UX.md` 4절은 이 자리를 3.1절의 중앙 프롬프트에 맡겼는데 그것은 3단계다.
           // 그때까지는 세 입구 중 지금 있는 하나(A-11)를 가리킨다.
@@ -354,16 +385,9 @@ export function Outliner() {
         {/* 마지막 틈 — 이것이 없으면 노드를 씬 최상위의 끝으로 꺼낼 수 없다 */}
         {rows.length > 0 ? (
           <DropGap
-            active={
-              dragId !== null &&
-              sameTarget(hover, { kind: 'gap', parentId: null, index: scene.rootIds.length })
-            }
-            onDragOver={(event) =>
-              handleDragOver(event, { kind: 'gap', parentId: null, index: scene.rootIds.length })
-            }
-            onDrop={(event) =>
-              handleDrop(event, { kind: 'gap', parentId: null, index: scene.rootIds.length })
-            }
+            active={dragId !== null && sameTarget(hover, rootEndTarget)}
+            onDragOver={(event) => handleDragOver(event, rootEndTarget)}
+            onDrop={(event) => handleDrop(event, rootEndTarget)}
           />
         ) : null}
       </div>
