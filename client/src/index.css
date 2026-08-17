@@ -26,6 +26,8 @@ select,
 textarea {
   font: inherit;
   color: inherit;
+  /* 배경까지 끊어야 ButtonFace 가 사라진다. 투명은 값이 아니라 참조라 부모 면의 토큰을 따라간다 */
+  background-color: transparent;
 }
 
 body {
