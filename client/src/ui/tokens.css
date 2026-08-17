@@ -129,6 +129,9 @@
 }
 
 [data-theme='light'] {
+  /* 다크 블록의 짝. 이 한 줄이 없으면 스크롤바와 기본 폼 위젯만 어두운 채로 남는다 */
+  color-scheme: light;
+
   --c-surface-base: var(--p-white);
   --c-surface-raised: var(--p-gray-100);
   --c-surface-overlay: var(--p-white);
