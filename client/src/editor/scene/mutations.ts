@@ -149,3 +149,22 @@ export function isDescendant(
 
   return false
 }
+
+/**
+ * 뿌리까지의 조상 id. 가까운 쪽이 먼저 나온다.
+ *
+ * 아웃라이너의 접힘을 푸는 데 쓴다 — **노드가 화면에 보이는 조건은 자기 자신이 아니라 조상이
+ * 전부 펼쳐져 있는 것**이므로, "이 노드를 보이게 하라"는 조상 목록을 요구한다.
+ * 없는 노드에서는 빈 배열이다. 화면 쪽이 부르므로 던지지 않는다(`findNode` 주석과 같은 이유).
+ */
+export function ancestorIds(state: SceneState, id: NodeId): NodeId[] {
+  const ancestors: NodeId[] = []
+
+  let current = findNode(state, id)?.parentId ?? null
+  while (current !== null) {
+    ancestors.push(current)
+    current = findNode(state, current)?.parentId ?? null
+  }
+
+  return ancestors
+}

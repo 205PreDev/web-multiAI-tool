@@ -18,8 +18,8 @@ import styles from './Outliner.module.css'
  *
  * **커맨드의 첫 실제 소비자다.** 여기서 일어나는 이름 변경·삭제·계층 이동은 전부
  * `useCommandRunner` 를 거치므로 Ctrl+Z 가 따라오고, 같은 커맨드가 나중에 조수(F-3)와
- * 협업 전파(K-4)에서 다시 쓰인다. 이 컴포넌트가 스토어를 직접 고치는 자리는 선택뿐이며,
- * 선택은 씬 데이터가 아니라 화면 상태라 히스토리에 남지 않는다.
+ * 협업 전파(K-4)에서 다시 쓰인다. 이 컴포넌트가 스토어를 직접 고치는 것은 선택과 접힘뿐이며,
+ * 둘 다 씬 데이터가 아니라 화면 상태라 히스토리에 남지 않는다.
  */
 
 interface Row {
@@ -83,9 +83,16 @@ export function Outliner() {
   const scene = useEditorStore((state) => state.scene)
   const selectedIds = useEditorStore((state) => state.selectedIds)
   const select = useEditorStore((state) => state.select)
+  /**
+   * **접힘이 스토어에 있는 이유는 접힘을 푸는 쪽이 여기가 아니기 때문이다.** 노드를 씬에 놓는
+   * 경로는 아웃라이너 밖에도 있고(Alt+방향키 · 앞으로 기즈모와 조수), 놓인 노드가 접힌 그룹
+   * 안이면 화면에 나타나지 않는다. 그 처리는 커맨드가 지나가는 자리에 한 번만 둔다
+   * (`store.ts` 의 `revealed`).
+   */
+  const collapsed = useEditorStore((state) => state.collapsedIds)
+  const toggleCollapse = useEditorStore((state) => state.toggleCollapse)
   const run = useCommandRunner()
 
-  const [collapsed, setCollapsed] = useState<ReadonlySet<NodeId>>(() => new Set())
   const [renamingId, setRenamingId] = useState<NodeId | null>(null)
   const [dragId, setDragId] = useState<NodeId | null>(null)
   const [hover, setHover] = useState<DropTarget | null>(null)
@@ -106,14 +113,6 @@ export function Outliner() {
   const rows = flatten(scene, collapsed)
   const selectedId = selectedIds[0] ?? null
   const selectedNode = selectedId === null ? null : findNode(scene, selectedId)
-
-  function toggleCollapse(id: NodeId) {
-    setCollapsed((current) => {
-      const next = new Set(current)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
-  }
 
   function endDrag() {
     setDragId(null)
@@ -190,14 +189,7 @@ export function Outliner() {
   }
 
   function addKind(kind: NodeKind) {
-    const parentId = selectedNode?.id ?? null
-
-    // 접어둔 그룹 안에 추가하면 방금 만든 것이 화면에 나타나지 않는다
-    if (parentId !== null) {
-      setCollapsed((current) => new Set([...current].filter((id) => id !== parentId)))
-    }
-
-    run(buildAddCommand(scene, kind, parentId))
+    run(buildAddCommand(scene, kind, selectedNode?.id ?? null))
   }
 
   return (
