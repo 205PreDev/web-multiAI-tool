@@ -35,7 +35,8 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # package.json 의 engines 와 맞춘다 (^20.19.0 || >=22.12.0)
+          # package.json 의 engines 와 맞춘다 (>=22.12.0). 선언과 검사 범위를 같게 두어야
+          # 20 에서만 깨지는 것이 초록으로 통과하는 일이 없다
           node-version: 22
           cache: npm
 
