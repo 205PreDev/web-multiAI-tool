@@ -104,4 +104,15 @@ export interface CommandDefinition<T extends CommandType> {
    * 것을 잊어도 컴파일이 통과한다.
    */
   targetNodeId: (payload: CommandMap[T]) => NodeId
+  /**
+   * 직전 커맨드에 이어붙일 수 있으면 합친 payload 를, 아니면 정의 자체를 두지 않는다.
+   *
+   * **같은 타입 · 같은 대상 · 짧은 시간차는 `history.ts` 가 이미 확인했다.** 여기서 답할
+   * 것은 "무엇을 남기는가"뿐이다 — 대개는 `to` 를 새 값으로, **`from` 은 직전 값을 그대로
+   * 유지**한다. `from` 을 최신 값으로 덮으면 되돌리기가 연속 조작의 중간으로 돌아간다.
+   *
+   * 없는 타입(추가·삭제·이름 변경·계층 이동)은 항상 새 커맨드로 남는다 — 그것들은 조작
+   * 하나가 곧 커맨드 하나다.
+   */
+  merge?: (previous: CommandMap[T], next: CommandMap[T]) => CommandMap[T]
 }

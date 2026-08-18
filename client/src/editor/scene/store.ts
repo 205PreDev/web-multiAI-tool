@@ -22,10 +22,14 @@ import { EMPTY_SCENE, type NodeId, type SceneState } from './types'
  * 그리고 **여기서 실패하는 것은 버그만이 아니다.** 아웃라이너에서 노드를 자기 자손 위로 끌어다
  * 놓는 것(A-2)은 사용자의 정상적인 조작이고, 그때 필요한 것은 스택 트레이스가 아니라
  * `docs/UX.md` 5절의 문구다.
+ *
+ * **`merged` 는 `execute` 에서만 의미가 있다.** 이번 push 가 직전 커맨드에 이어붙었는지를
+ * 실어, `useCommandRunner` 가 프레임마다 뜨는 토스트를 막을 수 있게 한다(기즈모 드래그·A-3).
+ * `undo`/`redo`는 병합하지 않으므로 항상 `false` 다.
  */
-export type ExecuteResult = { ok: true } | { ok: false; reason: string }
+export type ExecuteResult = { ok: true; merged: boolean } | { ok: false; reason: string }
 
-const OK: ExecuteResult = { ok: true }
+const UNDO_REDO_OK: ExecuteResult = { ok: true, merged: false }
 
 function failed(error: unknown, context: string): ExecuteResult {
   const reason = error instanceof Error ? error.message : String(error)
@@ -118,15 +122,17 @@ export const useEditorStore = create<EditorStore>((set, get) => {
 
     execute: (command) => {
       try {
+        let merged = false
         set((state) => {
           const result = pushCommand(state.scene, state.history, command)
+          merged = result.merged
           return {
             ...result,
             selectedIds: prune(result.scene, state.selectedIds),
             collapsedIds: revealed(result.scene, state.collapsedIds, targetNodeId(command)),
           }
         })
-        return OK
+        return { ok: true, merged }
       } catch (error) {
         return failed(error, '커맨드를 적용하지 못했습니다')
       }
@@ -163,7 +169,7 @@ export const useEditorStore = create<EditorStore>((set, get) => {
               : state.collapsedIds,
           }
         })
-        return OK
+        return UNDO_REDO_OK
       } catch (error) {
         return failed(error, '되돌리지 못했습니다')
       }
@@ -183,7 +189,7 @@ export const useEditorStore = create<EditorStore>((set, get) => {
               : state.collapsedIds,
           }
         })
-        return OK
+        return UNDO_REDO_OK
       } catch (error) {
         return failed(error, '다시 실행하지 못했습니다')
       }
