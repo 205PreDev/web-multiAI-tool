@@ -116,6 +116,9 @@ export const COMMANDS: { [T in CommandType]: CommandDefinition<T> } = {
       setNode(state, { ...getNode(state, nodeId), transform: from }),
     describe: () => '트랜스폼 변경',
     targetNodeId: ({ nodeId }) => nodeId,
+    // 기즈모 드래그(A-3)와 인스펙터 슬라이더(A-4)가 프레임마다 만드는 커맨드를 하나로 묶는다.
+    // from 은 드래그가 시작된 시점의 값을 유지해야 Ctrl+Z 한 번이 드래그 전체를 되돌린다.
+    merge: (previous, next) => ({ nodeId: next.nodeId, from: previous.from, to: next.to }),
   },
 
   setMaterial: {

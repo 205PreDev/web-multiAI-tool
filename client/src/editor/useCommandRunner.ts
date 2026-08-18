@@ -15,12 +15,16 @@ import { toast } from '../ui/toast'
  * **훅이 아닌 함수로 두는 것이 핵심이다.** 소비자가 컴포넌트만이 아니다 — 단축키 핸들러가
  * 이미 훅 밖에 있고, 조수(F-3)와 협업 수신(K-4)도 그렇다. UX 4절은 "조수가 실행한 커맨드도
  * 같은 토스트를 쓴다"고 정했는데, 이것이 훅이면 그 셋이 각자 토스트를 다시 짜게 된다.
+ *
+ * **병합된 push 는 토스트를 띄우지 않는다.** 기즈모 드래그(A-3)는 프레임마다 이 함수를
+ * 부르는데, `merged` 가 참이면 이미 화면에 떠 있는 토스트가 가리키는 커맨드에 지금 것이
+ * 합쳐졌다는 뜻이다 — 매번 새로 띄우면 드래그 한 번에 토스트가 수십 번 깜빡인다.
  */
 export function runCommand(command: Command): ExecuteResult {
   const result = useEditorStore.getState().execute(command)
 
-  if (result.ok) toast(`${describeCommand(command)} · Ctrl+Z로 되돌리기`)
-  else toast(result.reason, 'danger')
+  if (result.ok && !result.merged) toast(`${describeCommand(command)} · Ctrl+Z로 되돌리기`)
+  else if (!result.ok) toast(result.reason, 'danger')
 
   return result
 }
