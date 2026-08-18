@@ -28,9 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      # 액션은 이동하는 major 태그가 아니라 커밋 SHA 로 고정한다. 태그는 업스트림이 다시
+      # 가리킬 수 있고, 그러면 우리 PR 마다 새 코드가 검사 없이 실행된다. 버전을 올릴
+      # 때는 SHA 와 뒤에 붙인 태그 주석을 함께 바꾼다.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           # package.json 의 engines 와 맞춘다 (^20.19.0 || >=22.12.0)
           node-version: 22
