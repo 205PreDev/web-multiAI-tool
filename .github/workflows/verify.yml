@@ -1,0 +1,58 @@
+# PR 마다 `npm run verify` 를 돌린다 — 타입 · 린트 · 테스트 · 포맷 · 빌드.
+#
+# 지금까지 verify 는 수행자 로컬에서만 돌았다. 절차를 사람이 기억으로 지키는 동안에는 빠진
+# 것이 병합 직전까지 드러나지 않는다 — #9 에서 실제로 한 커밋이 format:check 를 건너뛴 채
+# 남았고, 타입·린트·테스트·빌드가 전부 초록이라 병합 직전 점검에서야 걸렸다.
+#
+# 3단계에서 이 자리에 라이선스 레지스트리 검사 · 금지 키워드 검사 · 번들 키 유출 단언이
+# 얹히고(CLAUDE.md 제약 1), 데모 레일(`npm run demo:rail`)도 같은 job 에 붙는다.
+
+name: verify
+
+# 문서만 바뀐 변경에는 돌리지 않는다. .prettierignore 가 docs/ 와 *.md 를 이미 빼두어
+# format:check 도 그 파일들을 보지 않으므로, 돌려봐야 검사 대상이 0인 실행이 된다.
+#
+# 주의: verify 를 required check 로 지정하면 문서만 바뀐 PR 은 실행 자체가 만들어지지
+# 않아 병합이 막힌다. 그 설정을 켤 때 이 필터를 함께 본다.
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
+# 같은 PR 에 새로 밀면 앞의 실행을 취소한다. main 은 취소하지 않는다 — 어느 커밋이
+# 초록이었는지가 남아야 하기 때문이다.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # 액션은 이동하는 major 태그가 아니라 커밋 SHA 로 고정한다. 태그는 업스트림이 다시
+      # 가리킬 수 있고, 그러면 우리 PR 마다 새 코드가 검사 없이 실행된다. 버전을 올릴
+      # 때는 SHA 와 뒤에 붙인 태그 주석을 함께 바꾼다.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # package.json 의 engines 와 맞춘다 (>=22.12.0). 선언과 검사 범위를 같게 두어야
+          # 20 에서만 깨지는 것이 초록으로 통과하는 일이 없다
+          node-version: 22
+          cache: npm
+
+      # npm 워크스페이스이므로 루트에서 한 번 설치하면 client 까지 함께 받는다.
+      - run: npm ci
+
+      # 이 한 줄이 1차 도구 검증 전부다 — typecheck · lint · test · format:check · build
+      - run: npm run verify
