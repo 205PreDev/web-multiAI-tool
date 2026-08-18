@@ -9,10 +9,21 @@
 
 name: verify
 
+# 문서만 바뀐 변경에는 돌리지 않는다. .prettierignore 가 docs/ 와 *.md 를 이미 빼두어
+# format:check 도 그 파일들을 보지 않으므로, 돌려봐야 검사 대상이 0인 실행이 된다.
+#
+# 주의: verify 를 required check 로 지정하면 문서만 바뀐 PR 은 실행 자체가 만들어지지
+# 않아 병합이 막힌다. 그 설정을 켤 때 이 필터를 함께 본다.
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
 
 # 같은 PR 에 새로 밀면 앞의 실행을 취소한다. main 은 취소하지 않는다 — 어느 커밋이
 # 초록이었는지가 남아야 하기 때문이다.
