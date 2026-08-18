@@ -1,0 +1,43 @@
+# PR 마다 `npm run verify` 를 돌린다 — 타입 · 린트 · 테스트 · 포맷 · 빌드.
+#
+# 지금까지 verify 는 수행자 로컬에서만 돌았다. 절차를 사람이 기억으로 지키는 동안에는 빠진
+# 것이 병합 직전까지 드러나지 않는다 — #9 에서 실제로 한 커밋이 format:check 를 건너뛴 채
+# 남았고, 타입·린트·테스트·빌드가 전부 초록이라 병합 직전 점검에서야 걸렸다.
+#
+# 3단계에서 이 자리에 라이선스 레지스트리 검사 · 금지 키워드 검사 · 번들 키 유출 단언이
+# 얹히고(CLAUDE.md 제약 1), 데모 레일(`npm run demo:rail`)도 같은 job 에 붙는다.
+
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 같은 PR 에 새로 밀면 앞의 실행을 취소한다. main 은 취소하지 않는다 — 어느 커밋이
+# 초록이었는지가 남아야 하기 때문이다.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # package.json 의 engines 와 맞춘다 (^20.19.0 || >=22.12.0)
+          node-version: 22
+          cache: npm
+
+      # npm 워크스페이스이므로 루트에서 한 번 설치하면 client 까지 함께 받는다.
+      - run: npm ci
+
+      # 이 한 줄이 1차 도구 검증 전부다 — typecheck · lint · test · format:check · build
+      - run: npm run verify
