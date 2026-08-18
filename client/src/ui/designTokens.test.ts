@@ -296,6 +296,51 @@ describe('N-14 — 여백은 간격 토큰으로만 준다', () => {
   })
 })
 
+/**
+ * **테마를 정의하는 블록은 `color-scheme` 을 짝으로 갖는다.**
+ *
+ * 이 선언은 우리가 그리지 않는 것들 — 스크롤바 · 기본 폼 위젯 · 캐럿 — 에만 영향을 준다.
+ * 그래서 빠져 있어도 우리가 칠한 면은 전부 테마를 따라가고, **한쪽 구석만 반대 테마로 남는다.**
+ * 위의 대비 검사도 이것을 보지 못한다 — `--` 로 시작하는 선언만 훑기 때문이다.
+ */
+function themeBlocks(): { selector: string; body: string }[] {
+  const text = sources().find((file) => file.path === 'ui/tokens.css')?.text ?? ''
+
+  return (
+    text
+      .split('}')
+      .map((block) => block.split('{'))
+      .filter((parts): parts is [string, string] => parts.length === 2)
+      .map(([selector, body]) => ({ selector: selector.trim(), body: stripComments(body) }))
+      // 팔레트를 정의하는 블록만 테마다. primitive 블록은 역할 색을 정의하지 않는다
+      .filter((block) => /--c-surface-base\s*:/.test(block.body))
+  )
+}
+
+const DECLARES_COLOR_SCHEME = /(?:^|[\s;{])color-scheme\s*:/
+
+describe('N-14 — 테마 블록은 color-scheme 을 짝으로 갖는다', () => {
+  it('팔레트를 정의하는 블록마다 color-scheme 이 있다', () => {
+    const blocks = themeBlocks()
+
+    // 0개를 훑고 통과하는 것이 이런 검사의 흔한 실패 방식이다. 다크와 라이트 둘이다
+    expect(blocks.length).toBeGreaterThanOrEqual(2)
+
+    const missing = blocks
+      .filter((block) => !DECLARES_COLOR_SCHEME.test(block.body))
+      .map((block) => block.selector)
+
+    expect(missing).toStrictEqual([])
+  })
+
+  it('규칙이 실제로 무는지 확인한다', () => {
+    expect(DECLARES_COLOR_SCHEME.test('  color-scheme: light;')).toBe(true)
+    expect(DECLARES_COLOR_SCHEME.test('  --c-surface-base: #fff;')).toBe(false)
+    // 이름의 일부로 들어간 것을 세지 않는다
+    expect(DECLARES_COLOR_SCHEME.test('  --my-color-scheme: light;')).toBe(false)
+  })
+})
+
 describe('N-14 — 리터럴 색을 쓰지 않는다', () => {
   it('검사할 파일을 실제로 찾았다', () => {
     // 경로가 어긋나 0개를 훑고 통과하는 것이 이런 검사의 흔한 실패 방식이다

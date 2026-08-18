@@ -8,7 +8,8 @@ import {
   serializeCommand,
   parseCommand,
 } from '../commands'
-import { applyCommand, revertCommand } from '../commands/history'
+import { applyCommand, EMPTY_HISTORY, revertCommand } from '../commands/history'
+import { useEditorStore } from '../scene/store'
 import { EMPTY_SCENE, type NodeId, type NodeKind, type SceneState } from '../scene/types'
 import { buildAddCommand, nextNodeName } from './addSpec'
 import { checkDrop, resolveDrop } from './dropTarget'
@@ -77,6 +78,35 @@ describe('드롭 판정 — 자리', () => {
       parentId: groupId,
       index: 2,
     })
+  })
+
+  /**
+   * **같은 부모 위에 떨어뜨리는 분기.** 위의 단언은 다른 부모에서 들어오는 경우만 태우고,
+   * 제자리 판정은 그 앞에서 `null` 로 끝나 여기까지 오지 않는다. 그래서 "이미 이 부모의
+   * 자식이지만 마지막은 아닌" 경우가 검사 밖에 있었다.
+   *
+   * 자리 보정이 필요한 이유는 틈에 떨어뜨릴 때와 같다 — 떼어낸 뒤의 형제 목록이 기준이라
+   * 마지막 자리는 `siblings.length` 가 아니라 `siblings.length - 1` 이다. 보정을 빠뜨리면
+   * 자리를 벗어난 index 가 되어 `moveNode` 가 거절하고, 사용자에게는 **자기 부모 위로는
+   * 드롭이 안 되는 것**으로 보인다.
+   */
+  it('이미 그 부모의 자식이면 마지막 자리로 보정한다', () => {
+    const { scene, groupId, box1, box2 } = fixture()
+
+    expect(resolveDrop(scene, box1, { kind: 'onNode', nodeId: groupId })).toStrictEqual({
+      parentId: groupId,
+      index: 1,
+    })
+
+    // 숫자만으로는 그 자리가 유효한지 알 수 없다 — 커맨드를 실제로 태운다
+    const placement = resolveDrop(scene, box1, { kind: 'onNode', nodeId: groupId })
+    if (!placement) throw new Error('자리를 얻지 못했습니다')
+
+    const command = reparentNode(scene, box1, placement.parentId, placement.index)
+    const moved = applyCommand(scene, command)
+
+    expect(moved.nodes[groupId]?.childIds).toStrictEqual([box2, box1])
+    expect(revertCommand(moved, command)).toStrictEqual(scene)
   })
 
   it('제자리에 떨어뜨린 것은 커맨드를 만들지 않는다', () => {
@@ -304,5 +334,182 @@ describe('아웃라이너 조작은 전부 되돌려진다', () => {
 
     expect(roundTripped).toStrictEqual(command)
     expect(revertCommand(applyCommand(base, roundTripped), roundTripped)).toStrictEqual(base)
+  })
+})
+
+/**
+ * 접힘은 씬 데이터가 아니라 화면 상태이지만, **그것을 푸는 책임은 커맨드가 지나가는 자리에
+ * 있다**(`store.ts` 의 `revealed`). 노드를 씬에 놓는 경로가 아웃라이너 밖에도 있기 때문이다 —
+ * 지금은 Alt+방향키이고 앞으로 기즈모와 조수(F-3) · 협업 수신(K-4)이 더해진다.
+ *
+ * 여기서 검사하지 않으면 새 경로가 접힘을 빠뜨렸을 때 아무 데도 걸리지 않는다. 그리고 그
+ * 증상은 오류가 아니라 **아무 일도 일어나지 않은 것처럼 보이는 화면**이라 3차에서도 지나가기
+ * 쉽다 — 커맨드는 성공했고 토스트도 떴기 때문이다.
+ */
+describe('접힘 — 커맨드가 건드린 노드는 화면에 보인다', () => {
+  function storeWith(scene: SceneState, collapsedIds: NodeId[]) {
+    useEditorStore.setState({
+      scene,
+      history: EMPTY_HISTORY,
+      selectedIds: [],
+      collapsedIds: new Set(collapsedIds),
+    })
+    return useEditorStore.getState()
+  }
+
+  const collapsedNow = () => useEditorStore.getState().collapsedIds
+
+  it('접힌 그룹 안에 추가하면 그 그룹이 펼쳐진다', () => {
+    const { scene, groupId } = fixture()
+    const store = storeWith(scene, [groupId])
+
+    expect(store.execute(buildAddCommand(scene, 'box', groupId)).ok).toBe(true)
+    expect(collapsedNow().has(groupId)).toBe(false)
+  })
+
+  it('접힌 그룹 안으로 드롭해도 펼쳐진다', () => {
+    const { scene, groupId, box3 } = fixture()
+    const store = storeWith(scene, [groupId])
+
+    const placement = resolveDrop(scene, box3, { kind: 'onNode', nodeId: groupId })
+    if (!placement) throw new Error('자리를 얻지 못했습니다')
+
+    expect(store.execute(reparentNode(scene, box3, placement.parentId, placement.index)).ok).toBe(
+      true,
+    )
+    expect(collapsedNow().has(groupId)).toBe(false)
+  })
+
+  it('Alt+방향키로 접힌 형제 안에 넣어도 펼쳐진다', () => {
+    // 이 경로가 아웃라이너 컴포넌트 밖에 있다 — 접힘이 컴포넌트 상태였을 때 닿지 못하던 곳이다
+    const { scene, groupId, box3 } = fixture()
+    const store = storeWith(scene, [groupId])
+
+    const plan = planKeyboardMove(scene, box3, 'in')
+    if (!plan.ok) throw new Error(plan.reason)
+
+    expect(store.execute(reparentNode(scene, box3, plan.parentId, plan.index)).ok).toBe(true)
+    expect(collapsedNow().has(groupId)).toBe(false)
+  })
+
+  it('여러 단으로 접혀 있으면 조상을 전부 펼친다', () => {
+    // 한 단만 펼치면 노드는 여전히 보이지 않는다
+    const outer = add(EMPTY_SCENE, 'group', '바깥 그룹', null)
+    const inner = add(outer.state, 'group', '안쪽 그룹', outer.id)
+    const store = storeWith(inner.state, [outer.id, inner.id])
+
+    expect(store.execute(buildAddCommand(inner.state, 'box', inner.id)).ok).toBe(true)
+    expect(collapsedNow().has(outer.id)).toBe(false)
+    expect(collapsedNow().has(inner.id)).toBe(false)
+  })
+
+  it('되돌리기로 되살아난 노드도 보인다', () => {
+    const { scene, groupId, box1 } = fixture()
+    const store = storeWith(scene, [])
+
+    expect(store.execute(removeNode(scene, box1)).ok).toBe(true)
+    useEditorStore.setState({ collapsedIds: new Set([groupId]) })
+
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+    expect(useEditorStore.getState().scene.nodes[box1]).toBeDefined()
+    expect(collapsedNow().has(groupId)).toBe(false)
+  })
+
+  it('조상이 아닌 접힘은 함께 지우지 않는다', () => {
+    // **이것이 없으면 "접힘을 통째로 비운다"는 구현이 그대로 통과한다.** 위의 단언들은 접어 둔
+    // 것이 전부 대상의 조상이라, 조상을 지우는 것과 전부 지우는 것을 구별하지 못한다
+    const outer = add(EMPTY_SCENE, 'group', '바깥 그룹', null)
+    const other = add(outer.state, 'group', '옆 그룹', null)
+    const store = storeWith(other.state, [outer.id, other.id])
+
+    expect(store.execute(buildAddCommand(other.state, 'box', outer.id)).ok).toBe(true)
+    expect(collapsedNow().has(outer.id)).toBe(false)
+    expect(collapsedNow().has(other.id)).toBe(true)
+  })
+
+  it('다시 실행으로 되돌아간 노드도 보인다', () => {
+    // 되돌리기와 다시 실행은 서로 다른 커맨드를 꺼내므로 한쪽만 검사하면 반쪽이다.
+    // 접힌 그룹에 추가 → Ctrl+Z → Ctrl+Y 가 그 경로다
+    const { scene, groupId } = fixture()
+    const store = storeWith(scene, [groupId])
+
+    expect(store.execute(buildAddCommand(scene, 'box', groupId)).ok).toBe(true)
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+
+    // 되돌린 뒤 다시 접는다 — 접힌 채로 다시 실행하는 것이 검사하려는 상태다
+    useEditorStore.setState({ collapsedIds: new Set([groupId]) })
+
+    expect(useEditorStore.getState().redo().ok).toBe(true)
+    expect(useEditorStore.getState().scene.nodes[groupId]?.childIds).toHaveLength(3)
+    expect(collapsedNow().has(groupId)).toBe(false)
+  })
+
+  /**
+   * **스택에 커맨드가 하나뿐이면 앞뒤가 같은 원소다.** 위의 두 단언은 그 상태만 태우므로,
+   * 되돌리기가 꺼낸 커맨드를 `future[0]` 이 아니라 `future.at(-1)` 에서 읽어도 통과한다.
+   * 그 둘이 갈라지려면 스택에 둘 이상이 쌓이고 **각 커맨드의 대상 조상이 서로 달라야** 한다.
+   *
+   * 뒤집혔을 때의 증상은 오류가 아니라 어긋난 화면이다 — 엉뚱한 커맨드의 대상이 펼쳐지고
+   * 정작 되살아난 노드는 접힌 채로 남는다.
+   */
+  function twoGroups() {
+    const g1 = add(EMPTY_SCENE, 'group', '그룹 1', null)
+    const a = add(g1.state, 'box', '박스 A', g1.id)
+    const g2 = add(a.state, 'group', '그룹 2', null)
+    const b = add(g2.state, 'box', '박스 B', g2.id)
+
+    return { scene: b.state, g1: g1.id, g2: g2.id, a: a.id, b: b.id }
+  }
+
+  it('되돌리기는 스택의 맨 뒤가 아니라 방금 꺼낸 커맨드를 본다', () => {
+    const { scene, g1, g2, a, b } = twoGroups()
+    const store = storeWith(scene, [])
+
+    let current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, a, 'A 1차')).ok).toBe(true)
+    current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, b, 'B 1차')).ok).toBe(true)
+
+    // 한 번 되돌려 스택 양쪽에 커맨드를 남긴 뒤, 두 번째 되돌리기를 검사한다
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+    useEditorStore.setState({ collapsedIds: new Set([g1, g2]) })
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+
+    // 두 번째로 되돌린 것은 박스 A 의 이름 변경이다 — 펼쳐질 것은 그룹 1 이다
+    expect(collapsedNow().has(g1)).toBe(false)
+    expect(collapsedNow().has(g2)).toBe(true)
+  })
+
+  it('다시 실행도 방금 적용한 커맨드를 본다', () => {
+    const { scene, g1, g2, a, b } = twoGroups()
+    const store = storeWith(scene, [])
+
+    let current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, a, 'A 1차')).ok).toBe(true)
+    current = useEditorStore.getState().scene
+    expect(store.execute(renameNode(current, b, 'B 1차')).ok).toBe(true)
+
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+    expect(useEditorStore.getState().undo().ok).toBe(true)
+
+    // 한 번 다시 실행해 스택 양쪽에 남긴 뒤, 두 번째 다시 실행을 검사한다
+    expect(useEditorStore.getState().redo().ok).toBe(true)
+    useEditorStore.setState({ collapsedIds: new Set([g1, g2]) })
+    expect(useEditorStore.getState().redo().ok).toBe(true)
+
+    // 두 번째로 다시 실행한 것은 박스 B 의 이름 변경이다
+    expect(collapsedNow().has(g2)).toBe(false)
+    expect(collapsedNow().has(g1)).toBe(true)
+  })
+
+  it('건드리지 않은 접힘은 그대로 두고, 바뀐 것이 없으면 같은 Set 을 돌려준다', () => {
+    // 매번 새 Set 을 만들면 커맨드 하나마다 아웃라이너 전체가 다시 그려진다
+    const { scene, groupId, box3 } = fixture()
+    const store = storeWith(scene, [groupId])
+    const before = collapsedNow()
+
+    expect(store.execute(renameNode(scene, box3, '다른 이름')).ok).toBe(true)
+    expect(collapsedNow().has(groupId)).toBe(true)
+    expect(collapsedNow()).toBe(before)
   })
 })

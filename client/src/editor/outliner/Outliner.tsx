@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent } from 'react'
 import { Button } from '../../ui/Button'
 import { Panel } from '../../ui/Panel'
 import { toast } from '../../ui/toast'
@@ -18,8 +18,8 @@ import styles from './Outliner.module.css'
  *
  * **커맨드의 첫 실제 소비자다.** 여기서 일어나는 이름 변경·삭제·계층 이동은 전부
  * `useCommandRunner` 를 거치므로 Ctrl+Z 가 따라오고, 같은 커맨드가 나중에 조수(F-3)와
- * 협업 전파(K-4)에서 다시 쓰인다. 이 컴포넌트가 스토어를 직접 고치는 자리는 선택뿐이며,
- * 선택은 씬 데이터가 아니라 화면 상태라 히스토리에 남지 않는다.
+ * 협업 전파(K-4)에서 다시 쓰인다. 이 컴포넌트가 스토어를 직접 고치는 것은 선택과 접힘뿐이며,
+ * 둘 다 씬 데이터가 아니라 화면 상태라 히스토리에 남지 않는다.
  */
 
 interface Row {
@@ -83,9 +83,16 @@ export function Outliner() {
   const scene = useEditorStore((state) => state.scene)
   const selectedIds = useEditorStore((state) => state.selectedIds)
   const select = useEditorStore((state) => state.select)
+  /**
+   * **접힘이 스토어에 있는 이유는 접힘을 푸는 쪽이 여기가 아니기 때문이다.** 노드를 씬에 놓는
+   * 경로는 아웃라이너 밖에도 있고(Alt+방향키 · 앞으로 기즈모와 조수), 놓인 노드가 접힌 그룹
+   * 안이면 화면에 나타나지 않는다. 그 처리는 커맨드가 지나가는 자리에 한 번만 둔다
+   * (`store.ts` 의 `revealed`).
+   */
+  const collapsed = useEditorStore((state) => state.collapsedIds)
+  const toggleCollapse = useEditorStore((state) => state.toggleCollapse)
   const run = useCommandRunner()
 
-  const [collapsed, setCollapsed] = useState<ReadonlySet<NodeId>>(() => new Set())
   const [renamingId, setRenamingId] = useState<NodeId | null>(null)
   const [dragId, setDragId] = useState<NodeId | null>(null)
   const [hover, setHover] = useState<DropTarget | null>(null)
@@ -103,17 +110,40 @@ export function Outliner() {
    */
   const rejection = useRef<string | null>(null)
 
+  /** 트리 밖을 지나갔는지 판정하는 데 쓴다 */
+  const treeRef = useRef<HTMLDivElement>(null)
+
+  /**
+   * 트리 밖을 지나가면 사유를 거둔다 — 나간 자리는 시도한 자리가 아니다.
+   *
+   * **`dragleave` 로는 이것을 알 수 없다.** 드래그가 끝날 때 브라우저는 `dragend` 를 보내기
+   * 직전에 마지막 대상에게 `dragleave` 를 한 번 더 보낸다. 그래서 `dragleave` 에서 사유를
+   * 거두면 **거절된 자리에 놓은 바로 그 순간의 사유가 함께 지워지고**, 금지 커서는 떴는데
+   * 놓아도 아무 말이 없는 상태가 된다. 실제로 그랬다.
+   *
+   * `dragover` 는 반대로 놓는 순간에는 오지 않는다. 사용자가 실제로 밖으로 지나갈 때만
+   * 오므로 "나갔다"의 신호로 쓸 수 있다. 창 전체에서 받는 이유는 트리 밖 요소의 이벤트가
+   * 트리로 올라오지 않기 때문이다.
+   */
+  useEffect(() => {
+    function onDragOverAnywhere(event: Event) {
+      const tree = treeRef.current
+      if (tree && !tree.contains(event.target as Node | null)) rejection.current = null
+    }
+
+    // **드래그 중에만 걸지 않는다.** 드래그가 시작된 렌더의 이펙트가 도는 시점과 첫
+    // `dragover` 가 오는 시점의 앞뒤가 보장되지 않는다. `dragover` 는 드래그 중에만
+    // 발생하므로 걸어두는 값이 사실상 없다
+    window.addEventListener('dragover', onDragOverAnywhere)
+    return () => window.removeEventListener('dragover', onDragOverAnywhere)
+  }, [])
+
   const rows = flatten(scene, collapsed)
+
+  /** 목록의 맨 끝. 마지막 틈과 트리의 빈 아래쪽이 함께 가리킨다 */
+  const rootEndTarget: DropTarget = { kind: 'gap', parentId: null, index: scene.rootIds.length }
   const selectedId = selectedIds[0] ?? null
   const selectedNode = selectedId === null ? null : findNode(scene, selectedId)
-
-  function toggleCollapse(id: NodeId) {
-    setCollapsed((current) => {
-      const next = new Set(current)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
-  }
 
   function endDrag() {
     setDragId(null)
@@ -126,14 +156,15 @@ export function Outliner() {
    *
    * **여기가 "드롭 실패"를 말할 수 있는 유일한 자리다.** 유효하지 않은 자리에서는 아래처럼
    * `preventDefault` 를 하지 않아 브라우저가 금지 커서를 보여주는데, 그 대가로 **그 자리에서는
-   * `drop` 이 발생하지 않는다.** `dropEffect === 'none'` 은 어느 대상도 드롭을 받지 않았다는
-   * 뜻이고, 그때 마지막으로 지나간 자리가 거절이었다면 그것이 사용자가 시도한 것이다.
-   * 이 처리가 없으면 `docs/UX.md` 3.7절이 금지한 "조용한 무시"가 된다.
+   * `drop` 이 발생하지 않는다.** 이 처리가 없으면 `docs/UX.md` 3.7절이 금지한 "조용한 무시"가
+   * 된다.
+   *
+   * **사유가 남아 있다는 것 자체가 조건이다.** 사유는 세 자리에서 지워진다 — 유효한 자리를
+   * 지나갈 때, 트리 밖을 지나갈 때, 그리고 드롭이 성사돼 `endDrag` 가 도는 자리. 셋 중 어느
+   * 것도 일어나지 않은 채 드래그가 끝났다면 사용자가 마지막으로 시도한 것은 거절된 자리다.
    */
-  function handleDragEnd(event: DragEvent) {
-    if (event.dataTransfer.dropEffect === 'none' && rejection.current) {
-      toast(rejection.current, 'danger')
-    }
+  function handleDragEnd() {
+    if (rejection.current) toast(rejection.current, 'danger')
     endDrag()
   }
 
@@ -160,10 +191,12 @@ export function Outliner() {
     if (!sameTarget(hover, target)) setHover(target)
   }
 
-  /** 트리 밖으로 나가면 표시선도 사유도 거둔다 — 나간 자리는 시도한 자리가 아니다 */
+  /**
+   * 트리 밖으로 나가면 표시선을 거둔다. **사유는 여기서 거두지 않는다** — 위 `useEffect` 주석에
+   * 있듯 이 이벤트는 드래그가 끝나는 순간에도 한 번 더 오기 때문이다.
+   */
   function handleDragLeaveTree(event: DragEvent) {
     if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
-    rejection.current = null
     setHover(null)
   }
 
@@ -180,6 +213,27 @@ export function Outliner() {
     endDrag()
   }
 
+  /**
+   * 목록 아래의 빈 자리.
+   *
+   * **여기를 비워두면 두 가지가 잘못된다.** 노드를 루트 끝으로 빼려고 목록 아래 빈 곳에 놓는
+   * 것은 사용자가 먼저 시도하는 동작인데 아무 일도 일어나지 않고(UX 3.7절이 금지한 조용한
+   * 무시), 오는 길에 거절된 행을 스쳤다면 그 사유가 남아 있다가 **놓은 적도 없는 자리의
+   * 사유로 토스트에 뜬다.** 빈 자리를 마지막 틈과 같은 자리로 등록해 둘을 함께 닫는다.
+   *
+   * 행에서 올라온 이벤트는 그 행이 이미 처리했으므로 걸러낸다. 걸러내지 않으면 버블링을 타고
+   * 여기까지 와서 행이 정한 자리를 루트 끝으로 덮어쓴다.
+   */
+  function handleTreeDragOver(event: DragEvent) {
+    if (event.target !== event.currentTarget) return
+    handleDragOver(event, rootEndTarget)
+  }
+
+  function handleTreeDrop(event: DragEvent) {
+    if (event.target !== event.currentTarget) return
+    handleDrop(event, rootEndTarget)
+  }
+
   function commitRename(id: NodeId, value: string) {
     const current = scene.nodes[id]
     setRenamingId(null)
@@ -190,14 +244,7 @@ export function Outliner() {
   }
 
   function addKind(kind: NodeKind) {
-    const parentId = selectedNode?.id ?? null
-
-    // 접어둔 그룹 안에 추가하면 방금 만든 것이 화면에 나타나지 않는다
-    if (parentId !== null) {
-      setCollapsed((current) => new Set([...current].filter((id) => id !== parentId)))
-    }
-
-    run(buildAddCommand(scene, kind, parentId))
+    run(buildAddCommand(scene, kind, selectedNode?.id ?? null))
   }
 
   return (
@@ -205,7 +252,13 @@ export function Outliner() {
       title="아웃라이너"
       actions={<AddMenu targetName={selectedNode?.name ?? null} onAdd={addKind} />}
     >
-      <div className={styles.tree} onDragLeave={handleDragLeaveTree}>
+      <div
+        className={styles.tree}
+        ref={treeRef}
+        onDragLeave={handleDragLeaveTree}
+        onDragOver={handleTreeDragOver}
+        onDrop={handleTreeDrop}
+      >
         {rows.length === 0 ? (
           // `docs/UX.md` 4절은 이 자리를 3.1절의 중앙 프롬프트에 맡겼는데 그것은 3단계다.
           // 그때까지는 세 입구 중 지금 있는 하나(A-11)를 가리킨다.
@@ -332,16 +385,9 @@ export function Outliner() {
         {/* 마지막 틈 — 이것이 없으면 노드를 씬 최상위의 끝으로 꺼낼 수 없다 */}
         {rows.length > 0 ? (
           <DropGap
-            active={
-              dragId !== null &&
-              sameTarget(hover, { kind: 'gap', parentId: null, index: scene.rootIds.length })
-            }
-            onDragOver={(event) =>
-              handleDragOver(event, { kind: 'gap', parentId: null, index: scene.rootIds.length })
-            }
-            onDrop={(event) =>
-              handleDrop(event, { kind: 'gap', parentId: null, index: scene.rootIds.length })
-            }
+            active={dragId !== null && sameTarget(hover, rootEndTarget)}
+            onDragOver={(event) => handleDragOver(event, rootEndTarget)}
+            onDrop={(event) => handleDrop(event, rootEndTarget)}
           />
         ) : null}
       </div>

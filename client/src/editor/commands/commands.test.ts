@@ -12,7 +12,7 @@ import {
 import { COMMAND_TYPES } from './registry'
 import { CommandParseError, parseCommand, serializeCommand, validateCommand } from './serialize'
 import { COMMAND_VERSION, type Command, type CommandType } from './types'
-import { useEditorStore } from '../scene/store'
+import { useEditorStore, type ExecuteResult } from '../scene/store'
 import { EMPTY_SCENE, IDENTITY_TRANSFORM, type SceneState } from '../scene/types'
 
 /**
@@ -226,6 +226,38 @@ describe('밖에서 들어온 payload 검증', () => {
       to: { parentId: null, index: -1 },
     }),
 
+    /*
+     * **NaN 과 Infinity 는 JSON 을 건너오지 않는다.** `JSON.stringify` 가 둘 다 `null` 로
+     * 바꾸므로 협업 전파(K-4)에서는 도달하지 않지만, 조수(F-3)는 커맨드를 객체로 직접
+     * 만들어 넣는다 — 계산 하나가 0 으로 나뉘면 그대로 들어온다. 통과시키면 씬에 NaN 이
+     * 앉고, 그 노드는 화면에서 사라진 것처럼 보이며 되돌려도 돌아오지 않는다.
+     */
+    'setTransform — position 에 NaN 이 있다': at('setTransform', {
+      nodeId: 'a',
+      from: IDENTITY_TRANSFORM,
+      to: { position: [Number.NaN, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    }),
+    'setTransform — scale 이 Infinity 다': at('setTransform', {
+      nodeId: 'a',
+      from: IDENTITY_TRANSFORM,
+      to: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [Number.POSITIVE_INFINITY, 1, 1] },
+    }),
+    'setMaterial — roughness 가 NaN 이다': at('setMaterial', {
+      nodeId: 'a',
+      from: { color: '#fff', roughness: 0.5, metalness: 0 },
+      to: { color: '#fff', roughness: Number.NaN, metalness: 0 },
+    }),
+    'reparentNode — to.index 가 NaN 이다': at('reparentNode', {
+      nodeId: 'a',
+      from: { parentId: null, index: 0 },
+      to: { parentId: null, index: Number.NaN },
+    }),
+    'addNode — index 가 소수다': at('addNode', {
+      node: plainNode(),
+      parentId: null,
+      index: 0.5,
+    }),
+
     '버전이 없다': { type: 'renameNode', payload: { nodeId: 'a', from: 'A', to: 'B' } },
     '버전이 다르다': {
       version: COMMAND_VERSION + 1,
@@ -258,6 +290,22 @@ describe('밖에서 들어온 payload 검증', () => {
       expect(message, label).not.toContain('판이 다릅니다')
     }
   })
+
+  /**
+   * **타입 이름은 객체의 키로 조회된다.** `COMMANDS[type] !== undefined` 로 문지기를 세우면
+   * `'constructor'` 와 `'toString'` 이 `Object.prototype` 의 함수를 돌려주고 함수는 truthy 라
+   * 그대로 통과한다. 그다음 `PAYLOAD_VALIDATORS['constructor']` 는 `Object` 생성자라 무엇을
+   * 넣어도 던지지 않고, 커맨드는 검증을 통과한 것이 되어 히스토리에 쌓인다.
+   * 씬을 다루는 쪽(`mutations.ts` 의 `hasNode`)이 같은 이유로 `Object.hasOwn` 을 쓴다.
+   */
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])(
+    "'%s' 를 커맨드 타입으로 받아들이지 않는다",
+    (protoKey) => {
+      expect(() =>
+        validateCommand({ version: COMMAND_VERSION, type: protoKey, payload: {} }),
+      ).toThrow(CommandParseError)
+    },
+  )
 
   it('팩토리가 만든 커맨드는 전부 통과한다', () => {
     const { scene, ids } = buildScene()
@@ -358,23 +406,103 @@ describe('스토어의 외부 진입점', () => {
     return useEditorStore.getState()
   }
 
+  /**
+   * ⚠️ **표본에 `version` 을 반드시 싣는다.** 검사 순서상 버전이 맨 앞이라, 빼먹으면 어떤
+   * 표본이든 "판이 다릅니다"로 거절되고 그 뒤의 경로는 한 줄도 돌지 않는다. 테스트는 초록색인
+   * 채로 모양 검증도 씬 대조도 검사하지 않게 된다 — 위의 '모양 표본은 버전 때문에 거절된 것이
+   * 아니다'와 같은 함정이며, 이 세 단언이 실제로 한동안 그 상태였다.
+   */
   it('모양이 틀린 커맨드를 던지지 않고 실패로 돌려준다', () => {
     const store = freshStore()
-    const result = store.executeSerialized({ type: 'addNode', payload: {} })
+    const result = store.executeSerialized({
+      version: COMMAND_VERSION,
+      type: 'addNode',
+      payload: {},
+    })
 
     expect(result.ok).toBe(false)
+    expect(result.ok === false && result.reason).not.toContain('판이 다릅니다')
     expect(useEditorStore.getState().scene).toStrictEqual(EMPTY_SCENE)
   })
 
   it('없는 노드를 가리키는 커맨드도 실패로 돌려준다', () => {
     const store = freshStore()
     const result = store.executeSerialized({
+      version: COMMAND_VERSION,
       type: 'renameNode',
       payload: { nodeId: '없는-노드', from: 'A', to: 'B' },
     })
 
+    // 모양은 맞다. 여기서 걸리는 것은 씬을 아는 적용 시점이며 그 사실이 문구에 드러나야 한다
     expect(result.ok).toBe(false)
+    expect(result.ok === false && result.reason).toContain('씬에 없는 노드')
     expect(useEditorStore.getState().history.past).toHaveLength(0)
+  })
+
+  /**
+   * **던지지 않는 것 자체가 계약이다.** 이 진입점을 부르는 셋 — UI 이벤트 핸들러 · 협업 수신의
+   * WebSocket 콜백(K-4) · 조수의 도구 호출(F-3) — 이 전부 예외를 받을 자리가 없다. React 에러
+   * 경계는 이벤트 핸들러의 예외를 잡지 못하고, 나머지 둘은 애초에 React 밖이다.
+   */
+  it('무엇을 넣어도 던지지 않고 결과값으로 돌려준다', () => {
+    const store = freshStore()
+
+    const garbage: unknown[] = [
+      null,
+      undefined,
+      42,
+      'renameNode',
+      [],
+      {},
+      { version: COMMAND_VERSION },
+      { version: COMMAND_VERSION, type: 'renameNode' },
+      { version: COMMAND_VERSION, type: 'renameNode', payload: null },
+      { version: COMMAND_VERSION, type: '없는타입', payload: {} },
+    ]
+
+    // 결과를 배열에 담는다 — `let` 에 받으면 대입이 클로저 안이라 타입이 `never` 로 좁혀진다
+    const results: ExecuteResult[] = []
+
+    for (const raw of garbage) {
+      const label = JSON.stringify(raw) ?? String(raw)
+
+      expect(() => {
+        results.push(store.executeSerialized(raw))
+      }, label).not.toThrow()
+      expect(results.at(-1)?.ok, label).toBe(false)
+    }
+
+    expect(useEditorStore.getState().scene).toStrictEqual(EMPTY_SCENE)
+  })
+
+  /**
+   * 검증을 건너뛰는 쪽도 같은 계약이다. 컴포넌트와 단축키는 `execute` 를 직접 부르고,
+   * 모양이 맞는 커맨드도 씬과 어긋나면 적용이 던진다 — 그것이 UI 이벤트 핸들러 밖으로
+   * 새어 나가면 받을 곳이 없다.
+   */
+  it('execute 도 씬과 어긋난 커맨드에 던지지 않는다', () => {
+    const store = freshStore()
+    const command: Command = {
+      version: COMMAND_VERSION,
+      type: 'renameNode',
+      payload: { nodeId: '없는-노드', from: 'A', to: 'B' },
+    }
+
+    const results: ExecuteResult[] = []
+    expect(() => {
+      results.push(store.execute(command))
+    }).not.toThrow()
+
+    expect(results.at(-1)?.ok).toBe(false)
+    expect(useEditorStore.getState().history.past).toHaveLength(0)
+  })
+
+  it('빈 히스토리에서 되돌리기·다시 실행을 해도 던지지 않는다', () => {
+    const store = freshStore()
+
+    expect(store.undo().ok).toBe(true)
+    expect(store.redo().ok).toBe(true)
+    expect(useEditorStore.getState().scene).toStrictEqual(EMPTY_SCENE)
   })
 
   it('성공하면 히스토리에 쌓인다', () => {
