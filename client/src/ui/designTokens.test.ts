@@ -306,13 +306,15 @@ describe('N-14 — 여백은 간격 토큰으로만 준다', () => {
 function themeBlocks(): { selector: string; body: string }[] {
   const text = sources().find((file) => file.path === 'ui/tokens.css')?.text ?? ''
 
-  return text
-    .split('}')
-    .map((block) => block.split('{'))
-    .filter((parts): parts is [string, string] => parts.length === 2)
-    .map(([selector, body]) => ({ selector: selector.trim(), body: stripComments(body) }))
-    // 팔레트를 정의하는 블록만 테마다. primitive 블록은 역할 색을 정의하지 않는다
-    .filter((block) => /--c-surface-base\s*:/.test(block.body))
+  return (
+    text
+      .split('}')
+      .map((block) => block.split('{'))
+      .filter((parts): parts is [string, string] => parts.length === 2)
+      .map(([selector, body]) => ({ selector: selector.trim(), body: stripComments(body) }))
+      // 팔레트를 정의하는 블록만 테마다. primitive 블록은 역할 색을 정의하지 않는다
+      .filter((block) => /--c-surface-base\s*:/.test(block.body))
+  )
 }
 
 const DECLARES_COLOR_SCHEME = /(?:^|[\s;{])color-scheme\s*:/
